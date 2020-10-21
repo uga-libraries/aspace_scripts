@@ -33,11 +33,6 @@ name_sources = ["local", "naf", "ingest"]
 fa_status_terms = ["completed", "unprocessed", "in_process", "problem"]
 
 
-# enumerations = client.get("/config/enumerations").json()
-# for enum in enumerations:
-#     print(enum["name"], enum["uri"])
-
-
 def update_extents():
     new_extents = client.get("/config/enumerations/14").json()
     new_extents["values"] = []
@@ -181,6 +176,3 @@ def merge_enums(enum_uri, from_val, to_val):
     merge_json = {"enum_uri": enum_uri, "from": from_val, "to": to_val}
     merge_instance = client.post("/config/enumerations/migration", json=merge_json)
     return merge_instance.json()
-
-
-update_fa_status_terms()
