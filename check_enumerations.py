@@ -30,7 +30,7 @@ subject_sources = ["aat", "lcsh", "local", "lcnaf"]
 
 name_sources = ["local", "naf", "ingest"]
 
-status_terms = ["completed", "unprocessed", "in_process", "problem"]
+fa_status_terms = ["completed", "unprocessed", "in_process", "problem"]
 
 
 # enumerations = client.get("/config/enumerations").json()
@@ -144,10 +144,43 @@ def update_subject_sources():
     logging.info(merge_ss)
 
 
+def update_name_sources():
+    new_name_sources = client.get("/config/enumerations/4").json()
+    new_name_sources["values"] = []
+    new_name_sources["enumeration_values"] = []
+    aspace_name_sources = client.get("/config/enumerations/4").json()
+    for name_source in aspace_name_sources["enumeration_values"]:
+        if name_source["value"] in name_sources:
+            print(name_source["value"])
+            new_name_sources["enumeration_values"].append(name_source)
+            new_name_sources["values"].append(name_source["value"])
+    update = client.post("/config/enumerations/4", json=new_name_sources)
+    print(update.json())
+    merge_ns1 = merge_enums("/config/enumerations/4", "library_of_congress_subject_headings", "naf")
+    merge_ns2 = merge_enums("/config/enumerations/4", "mediadonor", "local")
+    merge_ns3 = merge_enums("/config/enumerations/4", "digital_library_of_georgia_name_database", "local")
+    print(merge_ns1, merge_ns2, merge_ns3)
+    logging.info("Merging Name Sources: {}, {}, {}".format(merge_ns1, merge_ns2, merge_ns3))
+
+
+def update_fa_status_terms():
+    new_fa_status_terms = client.get("/config/enumerations/21").json()
+    new_fa_status_terms["values"] = []
+    new_fa_status_terms["enumeration_values"] = []
+    aspace_fa_status_terms = client.get("/config/enumerations/21").json()
+    for fa_status_term in aspace_fa_status_terms["enumeration_values"]:
+        if fa_status_term["value"] in fa_status_terms:
+            print(fa_status_term["value"])
+            new_fa_status_terms["enumeration_values"].append(fa_status_term)
+            new_fa_status_terms["values"].append(fa_status_term["value"])
+    update = client.post("/config/enumerations/21", json=new_fa_status_terms)
+    print(update.json())
+
+
 def merge_enums(enum_uri, from_val, to_val):
     merge_json = {"enum_uri": enum_uri, "from": from_val, "to": to_val}
     merge_instance = client.post("/config/enumerations/migration", json=merge_json)
     return merge_instance.json()
 
 
-update_subject_sources()
+update_fa_status_terms()
