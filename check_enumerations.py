@@ -4,8 +4,8 @@ from secrets import *
 
 logging.basicConfig(filename="AS_enums.log", level=logging.INFO)
 
-as_username = input("Enter your ArchivesSpace username: ")  # input("Enter your ArchivesSpace username: ")
-as_password = input("Enter your ArchivesSpace password: ")  # input("Enter your ArchivesSpace password: ")
+as_username = input("Enter your ArchivesSpace username: ")
+as_password = input("Enter your ArchivesSpace password: ")
 client = ASnakeClient(baseurl=as_api, username=as_username, password=as_password)
 client.authorize()
 
@@ -46,7 +46,7 @@ def update_extents():
     update = client.post("/config/enumerations/14", json=new_extents)
     print(update.json())
     if 'error' in update.json():
-        logging.info("Extents Error: {}".format(str(update.json())))
+        logging.error("Extents error: {}".format(update.json()))
     merge_extents = merge_enums("/config/enumerations/14", "item", "item(s)")
     print(merge_extents)
     logging.info("Merging Extents results: {}".format(merge_extents))
@@ -64,6 +64,8 @@ def update_containers():
             new_container["values"].append(container["value"])
     update = client.post("/config/enumerations/16", json=new_container)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Containers error: {}".format(update.json()))
     merge_containers = merge_enums("/config/enumerations/16", "unknown_item", "item")
     print(merge_containers)
     logging.info("Merging Container types: {}".format(merge_containers))
@@ -81,6 +83,8 @@ def update_instances():
             new_instances["values"].append(instance["value"])
     update = client.post("/config/enumerations/22", json=new_instances)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Instances error: {}".format(update.json()))
     merge_instance_values = [{"mixed_materials": ["box_oversize", "box", "folder", "item", "page", "text",
                                                   "oversize_box", "bankers_box", "folder_oversize", "volume"]},
                              {"microform": ["reel", "cartridge"]},
@@ -106,6 +110,8 @@ def update_acc_res_types():
             new_acc_res_types["values"].append(acc_res_type["value"])
     update = client.post("/config/enumerations/7", json=new_acc_res_types)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Accession Resorce Type error: {}".format(update.json()))
 
 
 def update_digital_objects():
@@ -120,6 +126,8 @@ def update_digital_objects():
             new_digital_object_types["values"].append(dig_obj_type["value"])
     update = client.post("/config/enumerations/7", json=new_digital_object_types)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Digital Object Types error: {}".format(update.json()))
 
 
 def update_subject_sources():
@@ -134,6 +142,8 @@ def update_subject_sources():
             new_subject_sources["values"].append(subject_source["value"])
     update = client.post("/config/enumerations/23", json=new_subject_sources)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Subject Sources error: {}".format(update.json()))
     merge_ss = merge_enums("/config/enumerations/23", "ingest", "local")
     print(merge_ss)
     logging.info(merge_ss)
@@ -151,6 +161,8 @@ def update_name_sources():
             new_name_sources["values"].append(name_source["value"])
     update = client.post("/config/enumerations/4", json=new_name_sources)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Name Sources error: {}".format(update.json()))
     merge_ns1 = merge_enums("/config/enumerations/4", "library_of_congress_subject_headings", "naf")
     merge_ns2 = merge_enums("/config/enumerations/4", "mediadonor", "local")
     merge_ns3 = merge_enums("/config/enumerations/4", "digital_library_of_georgia_name_database", "local")
@@ -170,9 +182,25 @@ def update_fa_status_terms():
             new_fa_status_terms["values"].append(fa_status_term["value"])
     update = client.post("/config/enumerations/21", json=new_fa_status_terms)
     print(update.json())
+    if 'error' in update.json():
+        logging.error("Finding Aid Status Terms error: {}".format(update.json()))
 
 
 def merge_enums(enum_uri, from_val, to_val):
     merge_json = {"enum_uri": enum_uri, "from": from_val, "to": to_val}
     merge_instance = client.post("/config/enumerations/migration", json=merge_json)
     return merge_instance.json()
+
+
+def run_update_suite():
+    update_extents()
+    update_containers()
+    update_instances()
+    update_acc_res_types()
+    update_digital_objects()
+    update_subject_sources()
+    update_name_sources()
+    update_fa_status_terms()
+
+
+run_update_suite()
