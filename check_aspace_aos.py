@@ -114,8 +114,9 @@ while run is True:
     elif run_check_aos == "Y" and run_update_ms3789 == "Y":
         print("Checking Archival Objects in ASpace...")
         check_aos()
-        print("Updating ms3789...")
+        print("Updating ms3789...", end='', flush=True)
         update_ms3789()
+        print("Done")
         run = False
     elif run_check_aos == "N" and run_update_ms3789 == "N":
         run = False
