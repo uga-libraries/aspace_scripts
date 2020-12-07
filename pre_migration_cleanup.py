@@ -1,9 +1,9 @@
 import MySQLdb as sql
 from secrets import *
 
-harg_conn = sql.connect(host=sql_host, port=sql_port, user=sql_user, passwd=sql_passwd, database="atkdb_dlg_copy")
+harg_conn = sql.connect(host=sql_host, port=sql_port, user=sql_user, passwd=sql_passwd, database=atk_dlg)
 harg_cursor = harg_conn.cursor()
-russ_conn = sql.connect(host=sql_host, port=sql_port, user=sql_user, passwd=sql_passwd, database="atkdb_russell_copy")
+russ_conn = sql.connect(host=sql_host, port=sql_port, user=sql_user, passwd=sql_passwd, database=atk_russ)
 russ_cursor = russ_conn.cursor()
 
 hargrett_updates = ["UPDATE DigitalObjects SET repositoryId=4 WHERE repositoryId=6 AND metsIdentifier LIKE 'harg%';",
