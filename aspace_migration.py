@@ -9,8 +9,8 @@ id_field_regex = re.compile(r"(^id_+\d)")
 FORMATTER = logging.Formatter("%(asctime)s — %(name)s — %(levelname)s — %(message)s")
 LOG_FILE = "aspace_migration.log"
 
-as_username = input("Enter your ArchivesSpace username: ")
-as_password = input("Enter your ArchivesSpace password: ")
+as_username = as_un
+as_password = as_pw
 client = ASnakeClient(baseurl=as_api, username=as_username, password=as_password)
 client.authorize()
 
@@ -18,14 +18,19 @@ need_to_delete_extents = ["copies", "linear_foot"]
 extent_types = ["gigabyte(s)", "linear_feet", "box(es)", "item(s)", "volume(s)", "moving_image(s)", "folder(s)",
                 "sound_recording(s)", "interview(s)", "photograph(s)", "oversize_folders", "interview", "photographs",
                 "item", "minutes", "unknown", "pages", "linear_foot", "copies"]
+need_to_delete_containers = ["unknown_item"]
 container_types = ["box", "folder", "oversized_box", "oversized_folder", "reel", "roll", "portfolio", "item", "volume",
                    "physdesc", "electronic_records", "carton", "drawer", "cassette", "rr", "cs"]
+need_to_delete_instance = ["accession"]  # Russell: http://aspace-staging-uga.galib.uga.edu:8080/search?aq=%7B%22query%22%3A%7B%22op%22%3A%22OR%22%2C%22subqueries%22%3A%5B%7B%22field%22%3A%22instance_type_enum_s%22%2C%22value%22%3A%22accession%22%2C%22negated%22%3Afalse%2C%22literal%22%3Atrue%2C%22jsonmodel_type%22%3A%22field_query%22%7D%5D%2C%22jsonmodel_type%22%3A%22boolean_query%22%7D%2C%22jsonmodel_type%22%3A%22advanced_query%22%7D
 instance_types = ["artifacts", "audio", "books", "digital_object", "graphic_materials", "maps", "microform",
                   "mixed_materials", "moving_images", "electronic_records"]
 do_types = ["cartographic", "mixed_materials", "moving_image", "software_multimedia", "sound_recording", "still_image",
             "text"]
+need_to_delete_accession = ["letter"]  # Russell: http://aspace-staging-uga.galib.uga.edu:8080/search?aq=%7B%22query%22%3A%7B%22op%22%3A%22OR%22%2C%22subqueries%22%3A%5B%7B%22field%22%3A%22resource_type_enum_s%22%2C%22value%22%3A%22letter%22%2C%22negated%22%3Afalse%2C%22literal%22%3Atrue%2C%22jsonmodel_type%22%3A%22field_query%22%7D%5D%2C%22jsonmodel_type%22%3A%22boolean_query%22%7D%2C%22jsonmodel_type%22%3A%22advanced_query%22%7D
 accession_res_types = ["collection", "papers", "records"]
+need_to_delete_subject = ["gmgpc"]  # Hargrett: http://aspace-staging-uga.galib.uga.edu:8080/search?aq=%7B%22query%22%3A%7B%22op%22%3A%22OR%22%2C%22subqueries%22%3A%5B%7B%22field%22%3A%22source_enum_s%22%2C%22value%22%3A%22gmgpc%22%2C%22negated%22%3Afalse%2C%22literal%22%3Atrue%2C%22jsonmodel_type%22%3A%22field_query%22%7D%5D%2C%22jsonmodel_type%22%3A%22boolean_query%22%7D%2C%22jsonmodel_type%22%3A%22advanced_query%22%7D
 subject_sources = ["aat", "lcsh", "local", "lcnaf"]
+need_to_delete_name = ["library_of_congress_subject_headings"]
 name_sources = ["local", "naf", "ingest"]
 fa_status_terms = ["completed", "unprocessed", "in_process", "problem"]
 
@@ -52,6 +57,11 @@ def get_logger(logger_name):
 
 
 def update_extents(logger):
+    merge_extents = merge_enums("/config/enumerations/14", "item", "item(s)")
+    if 'error' in merge_extents:
+        logger.error("Extent Types: Merging error: {}".format(merge_extents))
+    else:
+        print("Extent Types: Merging: {}".format(merge_extents))
     new_extents = client.get("/config/enumerations/14").json()
     new_extents["values"] = []
     new_extents["enumeration_values"] = []
@@ -65,14 +75,14 @@ def update_extents(logger):
         logger.error("Extent Types: Updating error: {}".format(update.json()))
     else:
         print("Extent Types: Updating: {}".format(update.json()))
-    merge_extents = merge_enums("/config/enumerations/14", "item", "item(s)")
-    if 'error' in merge_extents:
-        logger.error("Extent Types: Merging error: {}".format(merge_extents))
-    else:
-        print("Extent Types: Merging: {}".format(merge_extents))
 
 
 def update_containers(logger):
+    merge_containers = merge_enums("/config/enumerations/16", "unknown_item", "item")
+    if 'error' in merge_containers:
+        logger.error("Container Types: Merging error: {}".format(merge_containers))
+    else:
+        print("Container Types: Merging: {}".format(merge_containers))
     new_container = client.get("/config/enumerations/16").json()
     new_container["values"] = []
     new_container["enumeration_values"] = []
@@ -86,27 +96,9 @@ def update_containers(logger):
         logger.error("Container Types: Updating error: {}".format(update.json()))
     else:
         print("Container types: Updating: {}".format(update.json()))
-    merge_containers = merge_enums("/config/enumerations/16", "unknown_item", "item")
-    if 'error' in merge_containers:
-        logger.error("Container Types: Merging error: {}".format(merge_containers))
-    else:
-        print("Container Types: Merging: {}".format(merge_containers))
 
 
 def update_instances(logger):
-    new_instances = client.get("/config/enumerations/22").json()
-    new_instances["values"] = []
-    new_instances["enumeration_values"] = []
-    aspace_instance_type = client.get("/config/enumerations/22").json()
-    for instance in aspace_instance_type["enumeration_values"]:
-        if instance["value"] in instance_types:
-            new_instances["enumeration_values"].append(instance)
-            new_instances["values"].append(instance["value"])
-    update = client.post("/config/enumerations/22", json=new_instances)
-    if 'error' in update.json():
-        logger.error("Instance types: Updating error: {}".format(update.json()))
-    else:
-        print("Instance Types: Updating: {}".format(update.json()))
     merge_instance_values = [{"mixed_materials": ["box_oversize", "box", "folder", "item", "page", "text",
                                                   "oversize_box", "bankers_box", "folder_oversize", "volume"]},
                              {"microform": ["reel", "cartridge"]},
@@ -120,6 +112,19 @@ def update_instances(logger):
                     logger.error("Instance types: Merging error: {}".format(merge_instance_types))
                 else:
                     print("Instance Types: Merging: {}".format(merge_instance_types))
+    new_instances = client.get("/config/enumerations/22").json()
+    new_instances["values"] = []
+    new_instances["enumeration_values"] = []
+    aspace_instance_type = client.get("/config/enumerations/22").json()
+    for instance in aspace_instance_type["enumeration_values"]:
+        if instance["value"] in instance_types:
+            new_instances["enumeration_values"].append(instance)
+            new_instances["values"].append(instance["value"])
+    update = client.post("/config/enumerations/22", json=new_instances)
+    if 'error' in update.json():
+        logger.error("Instance types: Updating error: {}".format(update.json()))
+    else:
+        print("Instance Types: Updating: {}".format(update.json()))
 
 
 def update_acc_res_types(logger):
@@ -155,6 +160,11 @@ def update_digital_objects(logger):
 
 
 def update_subject_sources(logger):
+    merge_ss = merge_enums("/config/enumerations/23", "ingest", "local")
+    if 'error' in merge_ss:
+        logger.error("Subject Sources: Merging error: {}".format(merge_ss))
+    else:
+        print("Subject Sources Types: Merging: {}".format(merge_ss))
     new_subject_sources = client.get("/config/enumerations/23").json()
     new_subject_sources["values"] = []
     new_subject_sources["enumeration_values"] = []
@@ -168,27 +178,9 @@ def update_subject_sources(logger):
         logger.error("Subject Sources Types: Updating error: {}".format(update.json()))
     else:
         print("Subject Sources: Updating: {}".format(update.json()))
-    merge_ss = merge_enums("/config/enumerations/23", "ingest", "local")
-    if 'error' in merge_ss:
-        logger.error("Subject Sources: Merging error: {}".format(merge_ss))
-    else:
-        print("Subject Sources Types: Merging: {}".format(merge_ss))
 
 
 def update_name_sources(logger):
-    new_name_sources = client.get("/config/enumerations/4").json()
-    new_name_sources["values"] = []
-    new_name_sources["enumeration_values"] = []
-    aspace_name_sources = client.get("/config/enumerations/4").json()
-    for name_source in aspace_name_sources["enumeration_values"]:
-        if name_source["value"] in name_sources:
-            new_name_sources["enumeration_values"].append(name_source)
-            new_name_sources["values"].append(name_source["value"])
-    update = client.post("/config/enumerations/4", json=new_name_sources)
-    if 'error' in update.json():
-        logger.error("Name Sources: Updating error: {}".format(update.json()))
-    else:
-        print("Name Sources: Updating: {}".format(update.json()))
     merge_ns1 = merge_enums("/config/enumerations/4", "library_of_congress_subject_headings", "naf")
     merge_ns2 = merge_enums("/config/enumerations/4", "mediadonor", "local")
     merge_ns3 = merge_enums("/config/enumerations/4", "digital_library_of_georgia_name_database", "local")
@@ -204,6 +196,19 @@ def update_name_sources(logger):
         logger.error("Name Sources: Merging error: {}".format(merge_ns3))
     else:
         print("Name Sources: Merging: {}".format(merge_ns3))
+    new_name_sources = client.get("/config/enumerations/4").json()
+    new_name_sources["values"] = []
+    new_name_sources["enumeration_values"] = []
+    aspace_name_sources = client.get("/config/enumerations/4").json()
+    for name_source in aspace_name_sources["enumeration_values"]:
+        if name_source["value"] in name_sources:
+            new_name_sources["enumeration_values"].append(name_source)
+            new_name_sources["values"].append(name_source["value"])
+    update = client.post("/config/enumerations/4", json=new_name_sources)
+    if 'error' in update.json():
+        logger.error("Name Sources: Updating error: {}".format(update.json()))
+    else:
+        print("Name Sources: Updating: {}".format(update.json()))
 
 
 def update_fa_status_terms(logger):
@@ -274,6 +279,139 @@ def publish_do_fvs(logger):
         print("-"*100)
 
 
+def delete_users(logger):
+    print("Deleting tgraham and mcalists from ArchivesSpace")
+    users = client.get("users", params={"all_ids": True}).json()
+    for user in users:
+        user_info = client.get("users/{}".format(str(user))).json()
+        if user_info["username"] == "tgraham" or user_info["username"] == "mcalists":
+            print(user_info)
+            user_uri = user_info["uri"]
+            delete_user = client.delete(user_uri).json()
+            if 'error' in delete_user:
+                logger.error("Deleting user failed: {}, User: {}".format(delete_user, user_info["username"]))
+            else:
+                print("Deleting user completed: {}, User: {}".format(delete_user, user_info["username"]))
+    print("-" * 100)
+
+
+def delete_repository(logger):
+    print("Deleting UGA repository from ArchivesSpace")
+    repos = client.get("repositories").json()
+    for repo in repos:
+        if repo["name"] == "UGA Libraries":
+            print(repo)
+            delete_repo = client.delete(repo["uri"]).json()
+            if 'error' in delete_repo:
+                logger.error("Deleting repository failed: {}, Repo: {}".format(delete_repo, repo["name"]))
+            else:
+                print("Deleting repository completed: {}, Repo: {}".format(delete_repo, repo["name"]))
+    print("-" * 100)
+
+
+def update_rbrl462(logger):
+    print("Deleting 'af' Archival Object from RBRL/462")
+    repos = client.get("repositories").json()
+    for repo in repos:
+        if repo["name"] == "Richard B. Russell Library for Political Research and Studies":
+            resources = client.get(repo["uri"] + "/resources", params={"all_ids": True}).json()
+            for resource in resources:
+                resource_info = client.get(repo["uri"] + "/resources/{}".format(str(resource))).json()
+                if resource_info["id_0"] == "RBRL/462":
+                    res_tree = client.get(resource_info["tree"]["ref"]).json()
+                    # res_tree = client.get("/repositories/2/resources/1124/tree").json()
+                    for series in res_tree["children"]:
+                        if series["title"] == "Series 4: Research Files, 2005-2019":
+                            for subseries in series["children"]:
+                                if subseries["title"] == "Subseries B. Journal/Archive Analysis , 1975-2019":
+                                    for arch_obj in subseries["children"]:
+                                        if arch_obj["title"] == "af\n":
+                                            delete_arch_obj = client.delete(arch_obj["record_uri"]).json()
+                                            if 'error' in delete_arch_obj:
+                                                logger.error(
+                                                    "Deleting repository failed: {}, Repo: {}".format(delete_arch_obj,
+                                                                                                      arch_obj["title"])
+                                                            )
+                                            else:
+                                                print("Deleting 'af' in RBRL/462 completed: {}, "
+                                                      "URI: {}".format(delete_arch_obj, arch_obj["record_uri"]))
+    print("-" * 100)
+
+
+def update_ms1(logger):
+    print("Moving Archival Objects in ms1")
+    ledgers_series = ""
+    position_num = 1
+    repos = client.get("repositories").json()
+    for repo in repos:
+        if repo["name"] == "Hargrett Library":
+            resources = client.get(repo["uri"] + "/resources", params={"all_ids": True}).json()
+            for resource in resources:
+                resource_info = client.get(repo["uri"] + "/resources/{}".format(str(resource))).json()
+                if resource_info["id_0"] == "ms1":
+                    res_tree = client.get(resource_info["tree"]["ref"]).json()
+                    print(res_tree)
+                    for series in res_tree["children"]:
+                        if series["title"] == "11. Ledgers":
+                            ledgers_series = series["record_uri"]
+                        elif series["level"] == "file":
+                            if "Ledger" in series["title"]:
+                                print(series["title"])
+                                move_ao = client.post(ledgers_series + "/accept_children",
+                                                      params={"children": [series["record_uri"]],
+                                                              "position": position_num}).json()
+                                position_num += 1
+                                if 'error' in move_ao:
+                                    logger.error("Moving Archival Objects in ms1 error: {}, "
+                                                 "Archival Object: {}".format(move_ao, series["title"]))
+                                else:
+                                    print("Moving {} to {} - Status: {}".format(series["title"], ledgers_series,
+                                                                                move_ao))
+                    print("-" * 100)
+                    break
+
+
+def update_ms3265(logger):
+    print("Moving Archival Objects in ms3265")
+    misc_series = ""
+    position_num = 1
+    repos = client.get("repositories").json()
+    for repo in repos:
+        if repo["name"] == "Hargrett Library":
+            resources = client.get(repo["uri"] + "/resources", params={"all_ids": True}).json()
+            for resource in resources:
+                resource_info = client.get(repo["uri"] + "/resources/{}".format(str(resource))).json()
+                if resource_info["id_0"] == "ms3265":
+                    res_tree = client.get(resource_info["tree"]["ref"]).json()
+                    # res_tree = client.get("/repositories/4/resources/3941/tree").json()
+                    for series in res_tree["children"]:
+                        if series["title"] == "3. Financials":
+                            series["level"] = "series"
+                            series["resource"] = {"ref": res_tree["record_uri"]}
+                            series["lock_version"] = 0
+                            update_financials = client.post(series["record_uri"], json=series).json()
+                            if 'error' in update_financials:
+                                logger.error("Updating {}, Error: {}, Archival Object: {}".format(series["title"],
+                                                                                                  update_financials,
+                                                                                                  series["title"]))
+                            else:
+                                print("Updating Series: {}, Message: {}".format(series["title"], update_financials))
+                        elif series["title"] == "5. Miscellaneous":
+                            misc_series = series["record_uri"]
+                        elif series["level"] == "file":
+                            move_ao = client.post(misc_series + "/accept_children",
+                                                  params={"children": [series["record_uri"]],
+                                                          "position": position_num}).json()
+                            position_num += 1
+                            if 'error' in move_ao:
+                                logger.error("Moving Archival Objects in ms1 error: {}, "
+                                             "Archival Object: {}".format(move_ao, series["title"]))
+                            else:
+                                print("Moving {} to {} - Status: {}".format(series["title"], misc_series, move_ao))
+                    print("-" * 100)
+                    break
+
+
 def clean_aspace():
     logger = get_logger("__name__")
     update_extents(logger)
@@ -286,6 +424,11 @@ def clean_aspace():
     update_fa_status_terms(logger)
     unpublish_records(logger)
     publish_do_fvs(logger)
+    delete_users(logger)
+    delete_repository(logger)
+    update_rbrl462(logger)
+    update_ms1(logger)
+    update_ms3265(logger)
 
 
 clean_aspace()
