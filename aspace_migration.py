@@ -18,10 +18,8 @@ need_to_delete_extents = ["copies", "linear_foot"]
 extent_types = ["gigabyte(s)", "linear_feet", "box(es)", "item(s)", "volume(s)", "moving_image(s)", "folder(s)",
                 "sound_recording(s)", "interview(s)", "photograph(s)", "oversize_folders", "interview", "photographs",
                 "item", "minutes", "unknown", "pages", "linear_foot", "copies"]
-need_to_delete_containers = ["unknown_item"]
 container_types = ["box", "folder", "oversized_box", "oversized_folder", "reel", "roll", "portfolio", "item", "volume",
                    "physdesc", "electronic_records", "carton", "drawer", "cassette", "rr", "cs"]
-need_to_delete_instance = ["accession"]  # Russell: http://aspace-staging-uga.galib.uga.edu:8080/search?aq=%7B%22query%22%3A%7B%22op%22%3A%22OR%22%2C%22subqueries%22%3A%5B%7B%22field%22%3A%22instance_type_enum_s%22%2C%22value%22%3A%22accession%22%2C%22negated%22%3Afalse%2C%22literal%22%3Atrue%2C%22jsonmodel_type%22%3A%22field_query%22%7D%5D%2C%22jsonmodel_type%22%3A%22boolean_query%22%7D%2C%22jsonmodel_type%22%3A%22advanced_query%22%7D
 instance_types = ["artifacts", "audio", "books", "digital_object", "graphic_materials", "maps", "microform",
                   "mixed_materials", "moving_images", "electronic_records"]
 do_types = ["cartographic", "mixed_materials", "moving_image", "software_multimedia", "sound_recording", "still_image",
