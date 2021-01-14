@@ -5,3 +5,5 @@ AS_enums.log
 unpublish.log
 aspace_migration.log
 exports.rb
+/aspace_migration.log.2020-12-10
+invalid_links.csv
