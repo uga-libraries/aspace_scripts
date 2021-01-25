@@ -158,12 +158,11 @@ def update_digital_objects(logger):
 
 
 def update_subject_sources(logger):
-    merge_ss1 = merge_enums("/config/enumerations/23", "ingest", "local")
-    # merge_ss2 = merge_enums()
-    if 'error' in merge_ss1:
-        logger.error("Subject Sources: Merging error: {}".format(merge_ss1))
+    merge_ss = merge_enums("/config/enumerations/23", "ingest", "local")
+    if 'error' in merge_ss:
+        logger.error("Subject Sources: Merging error: {}".format(merge_ss))
     else:
-        print("Subject Sources Types: Merging: {}".format(merge_ss1))
+        print("Subject Sources Types: Merging: {}".format(merge_ss))
     new_subject_sources = client.get("/config/enumerations/23").json()
     new_subject_sources["values"] = []
     new_subject_sources["enumeration_values"] = []
