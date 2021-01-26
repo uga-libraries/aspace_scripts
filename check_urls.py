@@ -34,10 +34,10 @@ def export_eads(as_api, as_un, as_pw, source_path):
     client.authorize()
     repos = client.get("repositories").json()
     for repo in repos:
-        print(repo["name"])
+        print(repo["name"] + "\n")
         repo_id = repo["uri"].split("/")[2]
         resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
-        for resource_id in resources:
+        for resource_id in resources[:4]:
             resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
             combined_id = ""
             for field, value in resource.json().items():
@@ -48,17 +48,19 @@ def export_eads(as_api, as_un, as_pw, source_path):
             combined_aspace_id_clean = id_combined_regex.sub('', combined_id)
             if resource.json()["publish"] is True:
                 if resource.status_code == 200:
+                    export_ead = client.get("repositories/{}/resource_descriptions/{}.xml".format(repo_id, resource_id),
+                                            params={"include_unpublished": False, "include_daos": True,
+                                                    "numbered_cs": True, "print_pdf": False, "ead3": False})
                     filepath = str(Path(source_path, combined_aspace_id_clean))
-                    filepath + ".xml"
+                    filepath = filepath + ".xml"
                     with open(filepath, "wb") as local_file:
-                        local_file.write(resource.content)
+                        local_file.write(export_ead.content)
                         local_file.close()
-                        print("Exported: {}".format(combined_aspace_id_clean))
+                        print("Exported: {}".format(combined_id))
                 else:
                     print("\nThe following errors were found when exporting {}:\n{}: {}\n".format(combined_id, resource,
                                                                                                   resource.text))
-                print(combined_id)
-        print("-"*100 + "\n")
+        print("-"*100)
 
 
 def write_csv(mode, coll_num, note, err_code, url):
@@ -69,7 +71,6 @@ def write_csv(mode, coll_num, note, err_code, url):
 
 
 def check_urls(source_path):
-    print(source_path)
     for file in os.listdir(source_path):
         print(file)
         tree = etree.parse(str(Path(source_path, file)))
@@ -121,6 +122,6 @@ def check_urls(source_path):
 
 
 source_eads_path = setup_defaults()
-# export_eads(as_api, as_un, as_pw, source_eads_path)
+export_eads(as_api, as_un, as_pw, source_eads_path)
 write_csv("w", "Collection Number", "Note", "Error Code", "URL")
 check_urls(source_eads_path)
