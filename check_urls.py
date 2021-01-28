@@ -2,7 +2,6 @@ import requests
 import os
 import csv
 import re
-import soft404
 from pathlib import Path
 from secrets import *
 from asnake.client import ASnakeClient
@@ -75,15 +74,17 @@ def write_csv(mode, coll_num, note, err_code, url):
 def check_urls(source_path):
     for file in os.listdir(source_path):
         print(file)
-        tree = etree.parse(str(Path(source_path, file)))
+        tree = etree.parse(source_path + "/" + file)
         root = tree.getroot()
+        for element in root.getiterator():
+            element.tag = etree.QName(element).localname
         for element in root.findall(".//*"):
             if element.tag == "extref":
                 attributes = dict(element.attrib)
                 print(element.getparent().getparent().tag)
                 for key, value in attributes.items():
-                    if key == "href":
-                        if "www.anb.org" in value or "www.oxforddnb.com" in value or \
+                    if key == "{http://www.w3.org/1999/xlink}href":
+                        if "www.anb.org" in value or "www.oxforddnb.com" in value or "doi.org" in value or \
                                 "http://www.ledger-enquirer.com/2012/07/05/2110319_judge-aaron-cohn-dies-at-95.html?rh=1" \
                                 == value:
                             print("Couldn't parse href for: ", file)
@@ -106,35 +107,59 @@ def check_urls(source_path):
                                 write_csv("a", str(file), str(element.getparent().getparent().tag), str(e), str(value))
             if element.tag == "dao":
                 attributes = dict(element.attrib)
-                print("Digital Object: ", attributes["title"])
+                # for key, value in attributes.items():
+                #     clean_key = key.replace("{http://www.w3.org/1999/xlink}", "")
+                #     attributes[clean_key] = value
+                #     del attributes[key]
                 for key, value in attributes.items():
-                    if key == "href":
+                    if key == "{http://www.w3.org/1999/xlink}href":
+                        print("Digital Object: ", attributes["{http://www.w3.org/1999/xlink}title"])
                         print(value)
                         try:
                             test_request = requests.get(value)
                             if test_request.status_code != 200:
                                 print(test_request.status_code)
-                                write_csv("a", str(file), "Digital Object: {}".format(attributes["title"]),
+                                write_csv("a", str(file), "Digital Object: {}".format(attributes["{http://www.w3.org/1999/xlink}title"]),
                                           str(test_request.status_code), str(value))
                         except Exception as e:
                             print(file, e)
-                            write_csv("a", str(file), "Digital Object: {}".format(attributes["title"]), str(e),
+                            write_csv("a", str(file), "Digital Object: {}".format(attributes["{http://www.w3.org/1999/xlink}title"]), str(e),
                                       str(value))
-            element_words = str(element.text).split(" ")
-            filtered_words = list(filter(None, element_words))
-            for word in filtered_words:
-                word_clean = id_combined_regex.sub('', word)
-                match = web_url_regex.match(word)
-                if match:
-                    print(element.getparent().tag[24:])
-                    print(word)
+            else:
+                element_words = str(element.text).split(" ")
+                filtered_words = list(filter(None, element_words))
+                for word in filtered_words:
+                    clean_word = word.strip(",.;:`~()<>")
+                    match = web_url_regex.match(clean_word)
+                    if match:
+                        print(element.getparent().tag)
+                        print(clean_word)
+                        if "www.anb.org" in clean_word or "www.oxforddnb.com" in clean_word or "doi.org" in clean_word \
+                                or \
+                                "http://www.ledger-enquirer.com/2012/07/05/2110319_judge-aaron-cohn-dies-at-95.html?rh=1" \
+                                == clean_word:
+                            print("Couldn't parse href for: ", file)
+                            write_csv("a", str(file), str(element.getparent().getparent().tag), "Couldn't parse href",
+                                      str(clean_word))
+                            pass
+                        else:
+                            try:
+                                test_request = requests.get(clean_word)
+                                if test_request.status_code != 200:
+                                    print(test_request.status_code)
+                                    write_csv("a", str(file), element.getparent().tag, str(test_request.status_code), str(clean_word))
+                            except Exception as e:
+                                print(file, e)
+                                write_csv("a", str(file), element.getparent().tag, str(e), str(clean_word))
         print("-" * 200)
 
 
 source_eads_path = setup_defaults()
-export_eads(as_api, as_un, as_pw, source_eads_path)
+# export_eads(as_api, as_un, as_pw, source_eads_path)
 write_csv("w", "Collection Number", "Note", "Error Code", "URL")
-check_urls(source_eads_path)
+check_urls(source_eads_path)  # "F:/Schmidtty/Documents/UGA_remote/as_xtf_prgm/as_xtf_prgm/source_eads"
 
-# returned_value = soft404.probability("http://research.library.gsu.edu/ggdp")
-# print(returned_value)
+# client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
+# client.authorize()
+# archobj = client.get("/repositories/5/archival_objects/680061").json()
+# print(archobj)
