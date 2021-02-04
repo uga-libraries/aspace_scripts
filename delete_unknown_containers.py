@@ -1,46 +1,87 @@
 from secrets import *
+from asnake.aspace import ASpace
 from asnake.client import ASnakeClient
 
+
+aspace = ASpace(baseurl=as_api, username=as_un, password=as_pw)
 client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 resource_ids = ["/repositories/4/resources/4103", "/repositories/4/resources/4064", "/repositories/4/resources/2798",
                 "/repositories/4/resources/1001", "/repositories/4/resources/4048", "/repositories/2/resources/633",
-                "/repositories/2/resources/723", "/repositories/2/resources/748", "/repositories/2/resources/414",
-                "/repositories/5/resources/5071]"]
+                "/repositories/2/resources/723", "/repositories/2/resources/748", "/repositories/2/resources/414"]
+# "/repositories/5/resources/5071" - UA collection - Steve to check with Kat
 
-
-def check_children(children):
-    if children:
-        for child in children:
-            if "children" in child.keys():
-                archival_object = client.get(child["record_uri"]).json()
-                if "instances" in archival_object.keys():
-                    for instance in archival_object["instances"]:
-                        check_instances(instance)
-                print(archival_object)
-                check_children(child["children"])
-            else:
-                archival_object = client.get(child["record_uri"]).json()
-                print(archival_object)
-    else:
-        print("nothing!")
-        pass
-
-
-def check_instances(instance):
-    if "sub_container" in instance.keys():
-        print(instance["sub_container"])
-        check_instances(instance["sub_container"])
-    else:
-        pass
-
-
-# for resource_id in resource_ids:
-resource_info = client.get(resource_ids[0]).json()
-res_tree = client.get(resource_info["tree"]["ref"]).json()
-if "children" in res_tree.keys():
-    print(res_tree["children"])
-    check_children(res_tree["children"])
-else:
-    print(res_tree)
-    print("-"*100)
+for resource_id in resource_ids:
+    unknown_count = 0
+    uri_breakup = resource_id.split("/")
+    res_id = uri_breakup[4]
+    repo_id = uri_breakup[2]
+    try:
+        rl_repo = aspace.repositories(repo_id)
+        resource_record = rl_repo.resources(res_id).tree
+        resource_tree = resource_record.walk
+        print(rl_repo.resources(res_id).json()["title"])
+        for node in resource_tree:
+            ao_json = client.get(node.uri).json()
+            for instance in ao_json["instances"]:
+                if "sub_container" in instance.keys():
+                    indicators = []
+                    types = []
+                    for key, value in instance["sub_container"].items():
+                        if "indicator_" in key:
+                            if "unknown container" == value:
+                                child_type = "type_" + str(key[-1])
+                                indicators.append(key)
+                                types.append(child_type)
+                                unknown_count += 1
+                    for indicator in indicators:
+                        try:
+                            del instance["sub_container"][indicator]
+                        except Exception as e:
+                            print("There was an error when deleting the unknown indicator: {}".format(e))
+                            print(instance)
+                    for child_type in types:
+                        try:
+                            del instance["sub_container"][child_type]
+                        except Exception as e:
+                            print("There was an error when deleting the unknown child/grandchild type: {}".format(e))
+                            print(instance)
+                    if indicators and types:
+                        update_ao = client.post(node.uri, json=ao_json).json()
+                        print(update_ao)
+                else:
+                    indicators = []
+                    types = []
+                    for key, value in instance.items():
+                        if "indicator_" in key:
+                            if "unknown container" == value:
+                                child_type = "type_" + str(key[-1])
+                                indicators.append(key)
+                                types.append(child_type)
+                                unknown_count += 1
+                    for indicator in indicators:
+                        try:
+                            del instance[indicator]
+                        except Exception as e:
+                            print("There was an error when deleting the unknown indicator: {}".format(e))
+                            print(instance)
+                    for child_type in types:
+                        try:
+                            del instance[child_type]
+                        except Exception as e:
+                            print("There was an error when deleting the unknown child/grandchild type: {}".format(e))
+                            print(instance)
+                    if indicators and types:
+                        update_ao = client.post(node.uri, json=ao_json).json()
+                        print(update_ao)
+        print("Total unknown containers = {}".format(str(unknown_count)))
+        print("\n")
+        print("-" * 100)
+    except Exception as e:
+        print("There was an error retrieving {}: {}".format(resource_id, e))
+        try:
+            print(client.get(resource_id).json())
+        except:
+            print("Could not retrieve resource")
+        print("\n")
+        print("-" * 100)
