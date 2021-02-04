@@ -107,10 +107,6 @@ def check_urls(source_path):
                                 write_csv("a", str(file), str(element.getparent().getparent().tag), str(e), str(value))
             if element.tag == "dao":
                 attributes = dict(element.attrib)
-                # for key, value in attributes.items():
-                #     clean_key = key.replace("{http://www.w3.org/1999/xlink}", "")
-                #     attributes[clean_key] = value
-                #     del attributes[key]
                 for key, value in attributes.items():
                     if key == "{http://www.w3.org/1999/xlink}href":
                         print("Digital Object: ", attributes["{http://www.w3.org/1999/xlink}title"])
@@ -119,12 +115,14 @@ def check_urls(source_path):
                             test_request = requests.get(value)
                             if test_request.status_code != 200:
                                 print(test_request.status_code)
-                                write_csv("a", str(file), "Digital Object: {}".format(attributes["{http://www.w3.org/1999/xlink}title"]),
+                                write_csv("a", str(file),
+                                          "Digital Object: {}".format(attributes["{http://www.w3.org/1999/xlink}title"]),
                                           str(test_request.status_code), str(value))
                         except Exception as e:
                             print(file, e)
-                            write_csv("a", str(file), "Digital Object: {}".format(attributes["{http://www.w3.org/1999/xlink}title"]), str(e),
-                                      str(value))
+                            write_csv("a", str(file),
+                                      "Digital Object: {}".format(attributes["{http://www.w3.org/1999/xlink}title"]),
+                                      str(e), str(value))
             else:
                 element_words = str(element.text).split(" ")
                 filtered_words = list(filter(None, element_words))
@@ -147,7 +145,8 @@ def check_urls(source_path):
                                 test_request = requests.get(clean_word)
                                 if test_request.status_code != 200:
                                     print(test_request.status_code)
-                                    write_csv("a", str(file), element.getparent().tag, str(test_request.status_code), str(clean_word))
+                                    write_csv("a", str(file), element.getparent().tag, str(test_request.status_code),
+                                              str(clean_word))
                             except Exception as e:
                                 print(file, e)
                                 write_csv("a", str(file), element.getparent().tag, str(e), str(clean_word))
@@ -158,8 +157,3 @@ source_eads_path = setup_defaults()
 # export_eads(as_api, as_un, as_pw, source_eads_path)
 write_csv("w", "Collection Number", "Note", "Error Code", "URL")
 check_urls(source_eads_path)  # "F:/Schmidtty/Documents/UGA_remote/as_xtf_prgm/as_xtf_prgm/source_eads"
-
-# client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
-# client.authorize()
-# archobj = client.get("/repositories/5/archival_objects/680061").json()
-# print(archobj)
