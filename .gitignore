@@ -8,3 +8,12 @@ exports.rb
 /aspace_migration.log.2020-12-10
 invalid_links.csv
 source_eads
+ua97_unknowns.csv
+ua06_unknowns.csv
+ua97_unknowns.xls
+ua06-149.xls
+ua06-149.xlsx
+ua97_unknowns.xlsx
+defaults.json
+.idea
+venv
