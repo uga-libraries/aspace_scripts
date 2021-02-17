@@ -3,10 +3,10 @@ from secrets import *
 from asnake.client import ASnakeClient
 
 
-def write_csv(mode, uri, title, box_num, child_type, child_indicator):
-    with open("ua97_unknowns.csv", mode=mode, newline='') as invalid_links:
+def write_csv(mode, uri, title, date, box_num, child_type, child_indicator):
+    with open("ua06_unknowns.csv", mode=mode, newline='') as invalid_links:
         file_write = csv.writer(invalid_links, delimiter=",")
-        file_write.writerow([uri, title, box_num, child_type, child_indicator])
+        file_write.writerow([uri, title, date, box_num, child_type, child_indicator])
         invalid_links.close()
 
 
@@ -27,25 +27,25 @@ def check_children(children, cont_count):
     return count
 
 
-def check_instances(instance, archival_object, instance_count, cont_count=0):
+def check_instances(instance, archival_object, cont_count=0):
     if "sub_container" in instance.keys():
         for key, value in instance["sub_container"].items():
             if "indicator_" in key:
                 if "unknown container" == value:
+                    print(archival_object)
                     top_container = client.get(instance["sub_container"]["top_container"]["ref"]).json()
                     write_csv("a", archival_object["uri"], archival_object["title"],
-                              "Box {}".format(top_container["indicator"]), instance["sub_container"]["type_2"], value)
-                    # update_aos = client.post(arch_obj["record_uri"], json=ao).json()
-                    # print(update_aos)
+                              archival_object["dates"][0]["expression"], "Box {}".format(top_container["indicator"]),
+                              instance["sub_container"]["type_2"], value)
                     cont_count += 1
         return cont_count
 
 
 client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
-ua97_090_uri = "/repositories/5/resources/5078"
+ua97_090_uri = "/repositories/5/resources/5071"
 
-write_csv("w", "URI", "Title", "Box Number", "Child Type", "Child Indicator")
+write_csv("w", "URI", "Title", "Date", "Box Number", "Child Type", "Child Indicator")
 resource_info = client.get(ua97_090_uri).json()
 res_tree = client.get(resource_info["tree"]["ref"]).json()
 if "children" in res_tree.keys():
