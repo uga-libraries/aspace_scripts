@@ -2,6 +2,8 @@ import requests
 import os
 import csv
 import re
+from secrets import *
+from asnake.client import ASnakeClient
 from pathlib import Path
 from lxml import etree
 
@@ -28,7 +30,7 @@ def create_export_folder():
         return str(Path(source_path))
 
 
-def export_eads(source_path, repo_id, client):
+def export_eads(source_path, client):
     repos = client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
@@ -48,8 +50,7 @@ def export_eads(source_path, repo_id, client):
                     export_ead = client.get("repositories/{}/resource_descriptions/{}.xml".format(repo_id, resource_id),
                                             params={"include_unpublished": False, "include_daos": True,
                                                     "numbered_cs": True, "print_pdf": False, "ead3": False})
-                    filepath = str(Path(source_path, combined_aspace_id_clean))
-                    filepath = filepath + ".xml"
+                    filepath = str(Path(source_path, combined_aspace_id_clean)) + ".xml"
                     with open(filepath, "wb") as local_file:
                         local_file.write(export_ead.content)
                         local_file.close()
