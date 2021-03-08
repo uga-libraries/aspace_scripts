@@ -26,7 +26,8 @@ def check_aos():
                             if check_parent["level"] == "file" or check_parent["level"] == "item":
                                 if check_parent["instances"]:
                                     if check_parent["instances"][0]["sub_container"]:
-                                        if "indicactor_" not in check_parent["instances"][0]["sub_container"]:
+                                        indicator_field = [field for field in check_parent["instances"][0]["sub_container"].keys() if "indicator_" in field]
+                                        if not indicator_field:
                                             if check_parent["ref_id"] not in ao_instances:
                                                 print(check_parent["title"], check_parent["ref_id"])
                                                 if not check_parent["dates"]:
@@ -57,7 +58,9 @@ def check_aos():
                                                                                     resource["title"], resource["id_0"],
                                                                                     repo["name"]]
                         except Exception as e:
-                            logging.error(f"ERROR checking parent_ao: {e}. AO: {check_parent}")
+                            logging.error(f"ERROR checking parent_ao: {e}. AO: {check_parent['title']}, "
+                                          f"{check_parent['uri']}, {resource['title']}, {resource['id_0']}, "
+                                          f"{repo['name']}")
         print("-" * 100)
     return ao_instances
 
