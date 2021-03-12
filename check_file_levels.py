@@ -17,50 +17,58 @@ def check_aos():
         for ao_id in get_aos:
             get_ao = client.get(repo["uri"] + f"/archival_objects/{ao_id}")
             ao = json.loads(get_ao.text)
-            if "level" in ao:
-                if "file" == ao["level"] or "item" == ao["level"]:
-                    if "parent" in ao:
-                        check_parent = client.get(ao["parent"]["ref"]).json()
-                        resource = client.get(ao["resource"]["ref"]).json()
-                        try:
-                            if check_parent["level"] == "file" or check_parent["level"] == "item":
-                                if check_parent["instances"]:
-                                    if check_parent["instances"][0]["sub_container"]:
-                                        indicator_field = [field for field in check_parent["instances"][0]["sub_container"].keys() if "indicator_" in field]
-                                        if not indicator_field:
+            resource = client.get(ao["resource"]["ref"]).json()
+            try:
+                if "parent" in ao:
+                    if ao["instances"]:  # if there is a top container info linked
+                        if ao["instances"][0]["sub_container"]:
+                            childtype = [value for field, value in ao["instances"][0]["sub_container"].items() if "type_" in field]
+                            if "folder" in childtype:  # excluding all AV objects - just want children labeled as folders
+                                check_parent = client.get(ao["parent"]["ref"]).json()
+                                try:
+                                    if check_parent["level"] == "file" or check_parent["level"] == "item":  # exclude all series, sub-series stuff
+                                        if check_parent["instances"]:
+                                            if check_parent["instances"][0]["sub_container"]:
+                                                indicator_field = [field for field in check_parent["instances"][0]["sub_container"].keys() if "indicator_" in field]
+                                                if not indicator_field:
+                                                    if check_parent["ref_id"] not in ao_instances:
+                                                        print(check_parent["title"], check_parent["ref_id"])
+                                                        if not check_parent["dates"]:
+                                                            ao_instances[check_parent["ref_id"]] = [check_parent["title"],
+                                                                                                    "N/A", check_parent["uri"],
+                                                                                                    resource["title"],
+                                                                                                    resource["id_0"],
+                                                                                                    repo["name"]]
+                                                        else:
+                                                            ao_instances[check_parent["ref_id"]] = [check_parent["title"],
+                                                                                                    check_parent["dates"][0]["expression"],
+                                                                                                    check_parent["uri"],
+                                                                                                    resource["title"],
+                                                                                                    resource["id_0"],
+                                                                                                    repo["name"]]
+                                        else:
                                             if check_parent["ref_id"] not in ao_instances:
                                                 print(check_parent["title"], check_parent["ref_id"])
                                                 if not check_parent["dates"]:
-                                                    ao_instances[check_parent["ref_id"]] = [check_parent["title"],
-                                                                                            "N/A", check_parent["uri"],
+                                                    ao_instances[check_parent["ref_id"]] = [check_parent["title"], "N/A",
+                                                                                            check_parent["uri"],
                                                                                             resource["title"],
-                                                                                            resource["id_0"],
-                                                                                            repo["name"]]
+                                                                                            resource["id_0"], repo["name"]]
                                                 else:
                                                     ao_instances[check_parent["ref_id"]] = [check_parent["title"],
                                                                                             check_parent["dates"][0]["expression"],
                                                                                             check_parent["uri"],
-                                                                                            resource["title"],
-                                                                                            resource["id_0"],
+                                                                                            resource["title"], resource["id_0"],
                                                                                             repo["name"]]
-                                else:
-                                    if check_parent["ref_id"] not in ao_instances:
-                                        print(check_parent["title"])
-                                        if not check_parent["dates"]:
-                                            ao_instances[check_parent["ref_id"]] = [check_parent["title"], "N/A",
-                                                                                    check_parent["uri"],
-                                                                                    resource["title"],
-                                                                                    resource["id_0"], repo["name"]]
-                                        else:
-                                            ao_instances[check_parent["ref_id"]] = [check_parent["title"],
-                                                                                    check_parent["dates"][0]["expression"],
-                                                                                    check_parent["uri"],
-                                                                                    resource["title"], resource["id_0"],
-                                                                                    repo["name"]]
-                        except Exception as e:
-                            logging.error(f"ERROR checking parent_ao: {e}. AO: {check_parent['title']}, "
-                                          f"{check_parent['uri']}, {resource['title']}, {resource['id_0']}, "
-                                          f"{repo['name']}")
+                                except Exception as e:
+                                    logging.error(f"ERROR checking parent_ao: {e}. AO: {check_parent['title']}, "
+                                                  f"{check_parent['uri']}, {resource['title']}, {resource['id_0']}, "
+                                                  f"{repo['name']}")
+            except Exception as e:
+                print(f"ERROR checking archival object: {e}. AO: {ao['title']}, {ao['uri']}")
+                logging.error(f"ERROR checking parent_ao: {e}. AO: {ao['title']}, "
+                              f"{ao['uri']}, {resource['title']}, {resource['id_0']}, "
+                              f"{repo['name']}")
         print("-" * 100)
     return ao_instances
 
