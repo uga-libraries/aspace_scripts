@@ -4,6 +4,7 @@ import datetime
 import json
 import logging
 import csv
+import os
 
 
 def check_aos():
@@ -21,49 +22,53 @@ def check_aos():
             try:
                 if "parent" in ao:
                     if ao["instances"]:  # if there is a top container info linked
-                        if ao["instances"][0]["sub_container"]:
-                            childtype = [value for field, value in ao["instances"][0]["sub_container"].items() if "type_" in field]
-                            if "folder" in childtype:  # excluding all AV objects - just want children labeled as folders
-                                check_parent = client.get(ao["parent"]["ref"]).json()
-                                try:
-                                    if check_parent["level"] == "file" or check_parent["level"] == "item":  # exclude all series, sub-series stuff
-                                        if check_parent["instances"]:
-                                            if check_parent["instances"][0]["sub_container"]:
-                                                indicator_field = [field for field in check_parent["instances"][0]["sub_container"].keys() if "indicator_" in field]
-                                                if not indicator_field:
-                                                    if check_parent["ref_id"] not in ao_instances:
-                                                        print(check_parent["title"], check_parent["ref_id"])
-                                                        if not check_parent["dates"]:
-                                                            ao_instances[check_parent["ref_id"]] = [check_parent["title"],
-                                                                                                    "N/A", check_parent["uri"],
-                                                                                                    resource["title"],
-                                                                                                    resource["id_0"],
-                                                                                                    repo["name"]]
-                                                        else:
-                                                            ao_instances[check_parent["ref_id"]] = [check_parent["title"],
-                                                                                                    check_parent["dates"][0]["expression"],
-                                                                                                    check_parent["uri"],
-                                                                                                    resource["title"],
-                                                                                                    resource["id_0"],
-                                                                                                    repo["name"]]
-                                        else:
-                                            if check_parent["ref_id"] not in ao_instances:
-                                                print(check_parent["title"], check_parent["ref_id"])
-                                                if not check_parent["dates"]:
-                                                    ao_instances[check_parent["ref_id"]] = [check_parent["title"], "N/A",
-                                                                                            check_parent["uri"],
-                                                                                            resource["title"],
-                                                                                            resource["id_0"], repo["name"]]
-                                                else:
-                                                    ao_instances[check_parent["ref_id"]] = [check_parent["title"],
-                                                                                            check_parent["dates"][0]["expression"],
-                                                                                            check_parent["uri"],
-                                                                                            resource["title"], resource["id_0"],
-                                                                                            repo["name"]]
-                                except Exception as e:
-                                    logging.error(f"ERROR checking parent_ao: {e}. AO: {check_parent['title']}, "
-                                                  f"{check_parent['uri']}, {resource['title']}, {resource['id_0']}, "
-                                                  f"{repo['name']}")
+                        for instance in ao["instances"]:
+                            if "sub_container" in instance:
+                                childtype = [value for field, value in instance["sub_container"].items() if "type_" in field]
+                                if "folder" in childtype:  # excluding all AV objects - just want children labeled as folders
+                                    check_parent = client.get(ao["parent"]["ref"]).json()
+                                    try:
+                                        if check_parent["level"] == "file" or check_parent["level"] == "item":  # exclude all series, sub-series stuff
+                                            if check_parent["instances"]:
+                                                if check_parent["instances"][0]["sub_container"]:
+                                                    indicator_field = [field for field in check_parent["instances"][0]["sub_container"].keys() if "indicator_" in field]
+                                                    if not indicator_field:
+                                                        if check_parent["ref_id"] not in ao_instances:
+                                                            print(check_parent["title"], check_parent["ref_id"])
+                                                            if not check_parent["dates"]:
+                                                                ao_instances[check_parent["ref_id"]] = [check_parent["title"],
+                                                                                                        "N/A", check_parent["uri"],
+                                                                                                        resource["title"],
+                                                                                                        resource["id_0"],
+                                                                                                        repo["name"]]
+                                                            else:
+                                                                ao_instances[check_parent["ref_id"]] = [check_parent["title"],
+                                                                                                        check_parent["dates"][0]["expression"],
+                                                                                                        check_parent["uri"],
+                                                                                                        resource["title"],
+                                                                                                        resource["id_0"],
+                                                                                                        repo["name"]]
+                                            else:
+                                                if check_parent["ref_id"] not in ao_instances:
+                                                    print(check_parent["title"], check_parent["ref_id"])
+                                                    if not check_parent["dates"]:
+                                                        ao_instances[check_parent["ref_id"]] = [check_parent["title"], "N/A",
+                                                                                                check_parent["uri"],
+                                                                                                resource["title"],
+                                                                                                resource["id_0"], repo["name"]]
+                                                    else:
+                                                        ao_instances[check_parent["ref_id"]] = [check_parent["title"],
+                                                                                                check_parent["dates"][0]["expression"],
+                                                                                                check_parent["uri"],
+                                                                                                resource["title"], resource["id_0"],
+                                                                                                repo["name"]]
+                                    except Exception as e:
+                                        logging.error(f"ERROR checking parent_ao: {e}. AO: {check_parent['title']}, "
+                                                      f"{check_parent['uri']}, {resource['title']}, {resource['id_0']}, "
+                                                      f"{repo['name']}")
+                            # else:
+                            #     childtype = [value for field, value in instance.items() if "type_" in field]
+                            #
             except Exception as e:
                 print(f"ERROR checking archival object: {e}. AO: {ao['title']}, {ao['uri']}")
                 logging.error(f"ERROR checking parent_ao: {e}. AO: {ao['title']}, "
@@ -74,29 +79,46 @@ def check_aos():
 
 
 def write_csv(date, mode, ao_refid, ao_title, ao_date, ao_uri, coll_title, coll_id, repo):
-    with open(f"{date}as_ao_errors.csv", mode=mode, newline='', encoding='utf-8') as ao_log:
+    with open(f"reports/{date}as_ao_errors.csv", mode=mode, newline='', encoding='utf-8') as ao_log:
         file_write = csv.writer(ao_log, delimiter=",")
         file_write.writerow([ao_refid, ao_title, ao_date, ao_uri, coll_title, coll_id, repo])
         ao_log.close()
 
 
-run = True
-while run is True:
-    date_filename = str(datetime.date.today())
-    logging.basicConfig(filename=f"{date_filename}AS_AO_check.log")
-    as_username = input("ArchivesSpace username: ")
-    as_password = input("ArchivesSpace password: ")
-    print(" " * 100)
-    try:
-        client = ASnakeClient(baseurl=as_api, username=as_username, password=as_password)
-        client.authorize()
-        print("Checking Archival Objects in ASpace...")
-        write_csv(date_filename, "w", "AO_REFID", "AO_TITLE", "AO_DATE", "AO_URI", "COLLECTION_TITLE", "COLLECTION_ID",
-                  "REPOSITORY")
-        ao_instances = check_aos()
-        for key, value in ao_instances.items():
-            write_csv(date_filename, "a", key, value[0], value[1], value[2], value[3], value[4], value[5])
-        run = False
-    except Exception as e:
-        print(f"Please try again. ERROR: {e}")
-        logging.error(e)
+def create_reports_folder():
+    if "reports" not in os.listdir(os.getcwd()):
+        folder = "reports"
+        source_path = os.path.join(os.getcwd(), folder)
+        os.mkdir(source_path)
+
+
+def create_log_folder():
+    if "logfiles" not in os.listdir(os.getcwd()):
+        folder = "logfiles"
+        source_path = os.path.join(os.getcwd(), folder)
+        os.mkdir(source_path)
+
+
+if __name__ == "__main__":
+    run = True
+    while run is True:
+        create_reports_folder()
+        create_log_folder()
+        date_filename = str(datetime.date.today())
+        logging.basicConfig(filename=f"logfiles/{date_filename}AS_AO_check.log")
+        as_username = input("ArchivesSpace username: ")
+        as_password = input("ArchivesSpace password: ")
+        print(" " * 100)
+        try:
+            client = ASnakeClient(baseurl=as_api, username=as_username, password=as_password)
+            client.authorize()
+            print("Checking Archival Objects in ASpace...")
+            write_csv(date_filename, "w", "AO_REFID", "AO_TITLE", "AO_DATE", "AO_URI", "COLLECTION_TITLE", "COLLECTION_ID",
+                      "REPOSITORY")
+            ao_instances = check_aos()
+            for key, value in ao_instances.items():
+                write_csv(date_filename, "a", key, value[0], value[1], value[2], value[3], value[4], value[5])
+            run = False
+        except Exception as e:
+            print(f"Please try again. ERROR: {e}")
+            logging.error(e)
