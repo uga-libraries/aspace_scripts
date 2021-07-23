@@ -99,7 +99,7 @@ if __name__ == '__main__':
     client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
     client.authorize()
     wb = Workbook()
-    wb.active
+    wb.active()
     subjects = wb.create_sheet("Subjects")
     subjects.title = "Subjects"
     agents = wb.create_sheet("Agents")
