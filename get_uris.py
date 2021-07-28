@@ -1,5 +1,5 @@
 from secrets import *
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
 from asnake.aspace import ASpace
 from asnake.client import ASnakeClient
 
