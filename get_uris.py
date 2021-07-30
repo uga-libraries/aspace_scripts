@@ -1,42 +1,27 @@
 import PySimpleGUI as psg
-import threading
-import gc
-import json
 import sys
-
-from secrets import *
+import json
 from openpyxl import load_workbook
-from asnake.aspace import ASpace
 from asnake.client import ASnakeClient
-
-# digobj_file = "data/ms4401 do.xlsx"
-# dotemp_file = "data/bulk_import_DO_template.xlsx"
-
-
-WRITE_DOS_THREAD = '-DOS_THREAD-'
-DOSWRITE_PROGRESS_THREAD = '-WRITE_PROGRESS-'
-# aspace = ASpace(baseurl=as_api, username=as_un, password=as_pw)
-# client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
-# client.authorize()
 
 
 def gui():
-    gc.disable()
     defaults = psg.UserSettings()
-    close_program, client = get_aspace_log(defaults)
+    close_program, client, repositories = get_aspace_log(defaults)
     if close_program is True:
         sys.exit()
-    main_layout = [[psg.FileBrowse(' Select Digital Objects File ', file_types=(("Excel Files", "*.xlsx"),),
-                                   target=defaults['_DO_FILE_']),
-                    psg.InputText(default_text=defaults['_DO_FILE_'], key='_DO_FILE_')],  # TODO: Expand to CSVs
-                   [psg.FileBrowse(' Select Template ', file_types=(("Excel Files", "*.xlsx"),),
-                                   target=defaults['_DOTEMP_FILE_']),
-                    psg.InputText(default_text=defaults['_DOTEMP_FILE_'], key='_DOTEMP_FILE_')],  # TODO: Expand to CSVs
-                   [psg.Button(' Start ', key='_WRITE_DOS_', disabled=False)],
+    main_layout = [[psg.Text("Choose your repository:", font=("Roboto", 12))],
+                   [psg.DropDown([repo for repo in repositories.keys()], readonly=True,
+                                 default_value=defaults["repo_default"], key="_REPO_SELECT_",),
+                    psg.Button(" SAVE ", key="_SAVE_REPO_")],
+                   [psg.FileBrowse(' Select Digital Objects File ', file_types=(("Excel Files", "*.xlsx"),),),
+                    psg.InputText(default_text=defaults['_DO_FILE_'], key='_DO_FILE_')],
+                   [psg.FileBrowse(' Select Template ', file_types=(("Excel Files", "*.xlsx"),),),
+                    psg.InputText(default_text=defaults['_DOTEMP_FILE_'], key='_DOTEMP_FILE_')],
+                   [psg.Button(' START ', key='_WRITE_DOS_', disabled=False)],
                    [psg.Output(size=(80, 18), key="_output_")]]
     window = psg.Window('Write Digital Objects to Template', layout=main_layout)
     while True:
-        gc.collect()
         event, values = window.read()
         if event == psg.WINDOW_CLOSED or event == 'Exit':
             break
@@ -48,37 +33,53 @@ def gui():
             else:
                 defaults['_DO_FILE_'] = values['_DO_FILE_']
                 defaults['_DOTEMP_FILE_'] = values['_DOTEMP_FILE_']
-                dos_thread = threading.Thread(target=write_digobjs, args=(values['_DO_FILE_'], values['_DOTEMP_FILE_'],
-                                                                          client))
-                window[f'{"_WRITE_DOS_"}'].update(disabled=True)
-                dos_thread.start()
-        if event == WRITE_DOS_THREAD:
-            window[f'{"_WRITE_DOS_"}'].update(disabled=False)
+                write_digobjs(values['_DO_FILE_'], values['_DOTEMP_FILE_'], client,
+                              repositories[values["_REPO_SELECT_"]], window)
+        if event == "_SAVE_REPO_":
+            defaults["repo_default"] = values["_REPO_SELECT_"]
 
 
-def write_digobjs(digobj_file, dotemp_file, client):
+def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
+    gui_window[f'{"_WRITE_DOS_"}'].update(disabled=True)
     digobj_wb = load_workbook(digobj_file)
     digobj_sheet = digobj_wb.active
     dotemp_wb = load_workbook(dotemp_file)
     dotemp_sheet = dotemp_wb.active
     columns = [4, 6, 7, 8, 9, 10]
     write_row_index = 6
+    total_digobjs = 0
     for row in digobj_sheet.iter_rows(min_row=2, values_only=True):
+        total_digobjs += 1
         digobj_id = row[0]
         digobj_title = row[2]
         digobj_url = row[3]
         digobj_date = row[5]
         digobj_publish = row[8]
-        search_archobjs = client.get_paged(f"/repositories/{4}/search",
-                                           params={"q": f'title:"{digobj_title}, {digobj_date}"',
+        search_archobjs = client.get_paged(f"/repositories/{repo}/search",
+                                           params={"q": f'title:"{digobj_title} , {digobj_date}"',
                                                    "type": ['archival_object']})
         search_results = []
         for results in search_archobjs:
             search_results.append(results)
-        if len(search_results) > 1:  # TODO: elegant way for user to select which option from multiple found objects
-            print(f'{digobj_title}, {digobj_date}')
-            for result in search_results:
-                print(result)
+        if len(search_results) > 1:
+            multresults_layout = [[psg.Text(f'\n\nFound multiple options for\n{digobj_title}, {digobj_date}\n\n'
+                                            f'Choose one of the following:\n')],
+                                  [psg.Listbox([f'{results["title"]}' for results in search_results], size=(80, 5),
+                                               key="_ARCHOBJ_FILE_")],
+                                  [psg.Button(" SELECT ", key="_SELECT_ARCHOBJ_")]]
+            multresults_window = psg.Window("Multiple Results for Archival Object", multresults_layout)
+            selection = True
+            while selection is True:
+                multresults_event, multresults_values = multresults_window.Read()
+                if multresults_event == "_SELECT_ARCHOBJ_":
+                    for result in search_results:
+                        print(multresults_values["_ARCHOBJ_FILE_"])
+                        if result["title"] == multresults_values["_ARCHOBJ_FILE_"][0]:
+                            uri = result["uri"]
+                            resource_uri = result["resource"]
+                            selection = False
+                            multresults_window.close()
+                            break
         else:
             for result in search_results:
                 uri = result["uri"]
@@ -88,37 +89,32 @@ def write_digobjs(digobj_file, dotemp_file, client):
             dotemp_sheet.cell(row=write_row_index, column=column).value = column_map[column]
         write_row_index += 1
         print(column_map)
-        dotemp_wb.save(dotemp_file)
+        try:
+            dotemp_wb.save(dotemp_file)
+        except Exception as e:
+            print(f'\n\nFailed opening {dotemp_file}. Please close the record before trying again.\nError: {e}')
+            gui_window[f'{"_WRITE_DOS_"}'].update(disabled=False)
+            return
     digobj_wb.close()
     dotemp_wb.close()
+    print(f'\n{"*"*112}\n{" "*40}Finished writing {total_digobjs} to {dotemp_sheet}\n{"*"*112}')
+    gui_window[f'{"_WRITE_DOS_"}'].update(disabled=False)
 
 
-def get_aspace_log(defaults, as_un=None, as_pw=None, as_ap=None, as_client=None):
+def get_aspace_log(defaults):
     """
     Gets a user's ArchiveSpace credentials.
     There are 3 components to it, the setup code, correct_creds while loop, and the window_asplog_active while loop. It
     uses ASnake.client to authenticate and stay connected to ArchivesSpace. Documentation for ASnake can be found here:
     https://archivesspace-labs.github.io/ArchivesSnake/html/index.html
-    For an in-depth review on how this code is structured, see the wiki:
-    https://github.com/uga-libraries/ASpace_Batch_Export-Cleanup-Upload/wiki/Code-Structure#get_aspace_log
     Args:
         defaults (UserSetting class): contains the data from defaults.json file, all data the user has specified as default
-        as_un (str, optional): user's ArchivesSpace username
-        as_pw (str, optional): user's ArchivesSpace password
-        as_ap (str, optional): the ArchivesSpace API URL
-        as_client (ASnake.client object, optional): the ArchivesSpace ASnake client for accessing and connecting to the API
     Returns:
-        as_username (str): user's ArchivesSpace username
-        as_password (str): user's ArchivesSpace password
-        as_api (str): the ArchivesSpace API URL
         close_program (bool): if a user exits the popup, this will return true and end run_gui()
-        client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+        connect_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
     """
-    as_username = as_un
-    as_password = as_pw
-    as_api = as_ap
-    client = as_client
-    asp_version = None
+    connect_client = None
+    repositories = {}
     save_button_asp = " Save and Continue "
     window_asplog_active = True
     correct_creds = False
@@ -144,9 +140,12 @@ def get_aspace_log(defaults, as_un=None, as_pw=None, as_ap=None, as_client=None)
                                                   username=values_log["_ASPACE_UNAME_"],
                                                   password=values_log["_ASPACE_PWORD_"])
                     connect_client.authorize()
-                    client = connect_client
                     defaults["as_api"] = values_log["_ASPACE_API_"]
-
+                    repo_results = connect_client.get('/repositories')
+                    repo_results_dec = json.loads(repo_results.content.decode())
+                    for result in repo_results_dec:
+                        uri_components = result["uri"].split("/")
+                        repositories[result["name"]] = int(uri_components[-1])
                     window_asplog_active = False
                     correct_creds = True
                 except Exception as e:
@@ -166,7 +165,7 @@ def get_aspace_log(defaults, as_un=None, as_pw=None, as_ap=None, as_client=None)
                 close_program = True
                 break
         window_login.close()
-    return close_program, client
+    return close_program, connect_client, repositories
 
 
 gui()
