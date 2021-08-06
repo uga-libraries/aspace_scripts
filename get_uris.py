@@ -2,6 +2,7 @@ import PySimpleGUI as psg
 import sys
 import json
 from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
 from asnake.client import ASnakeClient
 
 
@@ -71,13 +72,19 @@ def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
         digobj_date = row[5]
         digobj_publish = row[8]
         archobj_uri, resource_uri = get_results(client, repo, digobj_title, digobj_date)
-        if archobj_uri is not None and resource_uri is not None:
-            write_obj_error = write_digobj(resource_uri, archobj_uri, digobj_id, digobj_title, digobj_publish, digobj_url,
-                                           dotemp_sheet, write_row_index, dotemp_wb, dotemp_file, gui_window)
-            if write_obj_error is not None:
-                print(write_obj_error)
-                close_wbs(digobj_wb, dotemp_wb)
-                return
+        if archobj_uri is None and resource_uri is None:
+            archobj_uri = "!!ERROR!!"
+            resource_uri = "!!ERROR!!"
+            for cell in dotemp_sheet[f'{write_row_index}:{write_row_index}']:
+                cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
+        write_obj_error = write_digobj(resource_uri, archobj_uri, digobj_id, digobj_title, digobj_publish,
+                                       digobj_url, dotemp_sheet, write_row_index, dotemp_wb, dotemp_file,
+                                       gui_window)
+        if write_obj_error is not None:
+            print(write_obj_error)
+            close_wbs(digobj_wb, dotemp_wb)
+        else:
+            print(f'Written: {digobj_title}, {digobj_date}')
     close_wbs(digobj_wb, dotemp_wb)
     print(f'\n{"*" * 112}\n{" " * 40}Finished writing {total_digobjs} to {dotemp_sheet}\n{"*" * 112}')
     gui_window[f'{"_WRITE_DOS_"}'].update(disabled=False)
@@ -118,8 +125,8 @@ def get_results(client, repo, digobj_title, digobj_date):
                     else:
                         psg.popup_error("ERROR\nSelected result does not match!", font=("Roboto", 14),
                                         keep_on_top=True)
-    elif len(search_results) is 0:
-        print(f'ERROR:\nNo results found.\n\nNot writing {digobj_title} to file...')
+    elif len(search_results) == 0:
+        print(f'ERROR: No results found for:\n{digobj_title}, {digobj_date}\n')
         return archobj_uri, resource_uri
     else:
         for result in search_results:
