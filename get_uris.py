@@ -1,6 +1,10 @@
 import PySimpleGUI as psg
 import sys
 import json
+import platform
+import subprocess
+import os
+from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from asnake.client import ASnakeClient
@@ -20,7 +24,8 @@ def gui():
                    [psg.FileBrowse(' Select Template ', file_types=(("Excel Files", "*.xlsx"),),),
                     psg.InputText(default_text=defaults['_DOTEMP_FILE_'], key='_DOTEMP_FILE_')],
                    [psg.Button(' START ', key='_WRITE_DOS_', disabled=False)],
-                   [psg.Output(size=(80, 18), key="_output_")]]
+                   [psg.Output(size=(80, 18), key="_output_")],
+                   [psg.Button(" Open DO Template File ", key="_OPEN_DOTEMP_")]]
     window = psg.Window('Write Digital Objects to Template', layout=main_layout)
     while True:
         event, values = window.read()
@@ -35,9 +40,16 @@ def gui():
                 defaults['_DO_FILE_'] = values['_DO_FILE_']
                 defaults['_DOTEMP_FILE_'] = values['_DOTEMP_FILE_']
                 write_digobjs(values['_DO_FILE_'], values['_DOTEMP_FILE_'], client,
-                              repositories[values["_REPO_SELECT_"]], window)
+                                       repositories[values["_REPO_SELECT_"]], window)
         if event == "_SAVE_REPO_":
             defaults["repo_default"] = values["_REPO_SELECT_"]
+        if event == "_OPEN_DOTEMP_":
+            if not defaults["_DOTEMP_FILE_"]:
+                filepath_eads = str(Path.cwd())
+                open_file(filepath_eads)
+            else:
+                filepath_eads = str(Path(defaults["_DOTEMP_FILE_"]))
+                open_file(filepath_eads)
 
 
 def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
@@ -63,6 +75,7 @@ def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
             close_wbs(digobj_wb, dotemp_wb)
             gui_window[f'{"_WRITE_DOS_"}'].update(disabled=False)
             return
+    errors = []
     for row in digobj_sheet.iter_rows(min_row=2, values_only=True):
         write_row_index += 1
         total_digobjs += 1
@@ -75,6 +88,7 @@ def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
         if archobj_uri is None and resource_uri is None:
             archobj_uri = "!!ERROR!!"
             resource_uri = "!!ERROR!!"
+            errors.append(f'{digobj_title}, {digobj_date}')
             for cell in dotemp_sheet[f'{write_row_index}:{write_row_index}']:
                 cell.fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')
         write_obj_error = write_digobj(resource_uri, archobj_uri, digobj_id, digobj_title, digobj_publish,
@@ -86,8 +100,14 @@ def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
         else:
             print(f'Written: {digobj_title}, {digobj_date}')
     close_wbs(digobj_wb, dotemp_wb)
+    if errors:
+        error_message = "ERROR: Could not find any records with the following titles:\n"
+        for error in errors:
+            error_message += "\n" + error + "\n"
+        print(error_message)
     print(f'\n{"*" * 112}\n{" " * 40}Finished writing {total_digobjs} to {dotemp_sheet}\n{"*" * 112}')
     gui_window[f'{"_WRITE_DOS_"}'].update(disabled=False)
+    return errors
 
 
 def close_wbs(digobj_wb, dotemp_wb):
@@ -126,7 +146,7 @@ def get_results(client, repo, digobj_title, digobj_date):
                         psg.popup_error("ERROR\nSelected result does not match!", font=("Roboto", 14),
                                         keep_on_top=True)
     elif len(search_results) == 0:
-        print(f'ERROR: No results found for:\n{digobj_title}, {digobj_date}\n')
+        print(f'\nERROR: No results found for:\n{digobj_title}, {digobj_date}\n')
         return archobj_uri, resource_uri
     else:
         for result in search_results:
@@ -219,6 +239,24 @@ def get_aspace_log(defaults):
                 break
         window_login.close()
     return close_program, connect_client, repositories
+
+
+def open_file(filepath):
+    """
+    Takes a filepath and opens the folder according to Windows, Mac, or Linux.
+
+    Args:
+        filepath (str): the filepath of the folder/directory a user wants to open
+
+    Returns:
+        None
+    """
+    if platform.system() == "Windows":
+        os.startfile(filepath)
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["open", filepath])
+    else:
+        subprocess.Popen(["xdg-open", filepath])
 
 
 if __name__ == "__main__":
