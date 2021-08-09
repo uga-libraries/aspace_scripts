@@ -24,9 +24,9 @@ instance_types = ["artifacts", "audio", "books", "digital_object", "graphic_mate
                   "mixed_materials", "moving_images", "electronic_records"]
 do_types = ["cartographic", "mixed_materials", "moving_image", "software_multimedia", "sound_recording", "still_image",
             "text"]
-need_to_delete_accession = ["letter"]  # Russell: http://aspace-staging-uga.galib.uga.edu:8080/search?aq=%7B%22query%22%3A%7B%22op%22%3A%22OR%22%2C%22subqueries%22%3A%5B%7B%22field%22%3A%22resource_type_enum_s%22%2C%22value%22%3A%22letter%22%2C%22negated%22%3Afalse%2C%22literal%22%3Atrue%2C%22jsonmodel_type%22%3A%22field_query%22%7D%5D%2C%22jsonmodel_type%22%3A%22boolean_query%22%7D%2C%22jsonmodel_type%22%3A%22advanced_query%22%7D
+need_to_delete_accession = ["letter"]
 accession_res_types = ["collection", "papers", "records"]
-need_to_delete_subject = ["gmgpc"]  # Hargrett: http://aspace-staging-uga.galib.uga.edu:8080/search?aq=%7B%22query%22%3A%7B%22op%22%3A%22OR%22%2C%22subqueries%22%3A%5B%7B%22field%22%3A%22source_enum_s%22%2C%22value%22%3A%22gmgpc%22%2C%22negated%22%3Afalse%2C%22literal%22%3Atrue%2C%22jsonmodel_type%22%3A%22field_query%22%7D%5D%2C%22jsonmodel_type%22%3A%22boolean_query%22%7D%2C%22jsonmodel_type%22%3A%22advanced_query%22%7D
+need_to_delete_subject = ["gmgpc"]
 subject_sources = ["aat", "lcsh", "local", "lcnaf"]
 need_to_delete_name = ["library_of_congress_subject_headings"]
 name_sources = ["local", "naf", "ingest"]
