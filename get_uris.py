@@ -125,7 +125,7 @@ def get_results(client, repo, digobj_title, digobj_date):
     for results in search_archobjs:
         search_results.append(results)
     if len(search_results) > 1:
-        multresults_layout = [[psg.Text(f'\n\nFound multiple options for\n{digobj_title}, {digobj_date}\n\n'
+        multresults_layout = [[psg.Text(f'\n\nFound multiple options for\n{digobj_title}, {digobj_date}\n\n'  # TODO: add Box and Folder #, and identifier (ms1000) for info
                                         f'Choose one of the following:\n')],
                               [psg.Listbox([f'{results["title"]}' for results in search_results], size=(80, 5),
                                            key="_ARCHOBJ_FILE_")],
