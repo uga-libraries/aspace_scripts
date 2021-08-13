@@ -119,15 +119,24 @@ def get_results(client, repo, digobj_title, digobj_date):
     archobj_uri = None
     resource_uri = None
     search_archobjs = client.get_paged(f"/repositories/{repo}/search",
-                                       params={"q": f'title:"{digobj_title}, {digobj_date}"',
+                                       params={"q": f'title:"{digobj_title}"',  # , {digobj_date}
                                                "type": ['archival_object']})
     search_results = []
     for results in search_archobjs:
         search_results.append(results)
     if len(search_results) > 1:
+        search_options = []
+        for result in search_results:
+            result_container_uri = result["top_container_uri_u_sstr"][0]
+            top_container_json = client.get(result_container_uri).json()
+            box_coll_info = top_container_json["long_display_string"]
+            box_coll_list = box_coll_info.split(",")
+            result_child = result["child_container_u_sstr"][0]
+            result_option = f'{result["title"]}; {box_coll_list[0]}; {result_child}; {box_coll_list[1]}'
+            search_options.append(result_option)
         multresults_layout = [[psg.Text(f'\n\nFound multiple options for\n{digobj_title}, {digobj_date}\n\n'  # TODO: add Box and Folder #, and identifier (ms1000) for info
                                         f'Choose one of the following:\n')],
-                              [psg.Listbox([f'{results["title"]}' for results in search_results], size=(80, 5),
+                              [psg.Listbox(search_options, size=(120, 5),
                                            key="_ARCHOBJ_FILE_")],
                               [psg.Button(" SELECT ", key="_SELECT_ARCHOBJ_")]]
         multresults_window = psg.Window("Multiple Results for Archival Object", multresults_layout)
@@ -136,7 +145,9 @@ def get_results(client, repo, digobj_title, digobj_date):
             multresults_event, multresults_values = multresults_window.Read()
             if multresults_event == "_SELECT_ARCHOBJ_":
                 for result in search_results:
-                    if result["title"] == multresults_values["_ARCHOBJ_FILE_"][0]:
+                    selection_title = multresults_values["_ARCHOBJ_FILE_"][0].split(";")[0]  # TODO: this part is screwing with me - not matching on second option at all, despite being perflectly matched
+                    print(selection_title)
+                    if result["title"].split(";")[0] == selection_title:
                         archobj_uri = result["uri"]
                         resource_uri = result["resource"]
                         selection = False
