@@ -40,7 +40,7 @@ def gui():
                 defaults['_DO_FILE_'] = values['_DO_FILE_']
                 defaults['_DOTEMP_FILE_'] = values['_DOTEMP_FILE_']
                 write_digobjs(values['_DO_FILE_'], values['_DOTEMP_FILE_'], client,
-                                       repositories[values["_REPO_SELECT_"]], window)
+                              repositories[values["_REPO_SELECT_"]], window)
         if event == "_SAVE_REPO_":
             defaults["repo_default"] = values["_REPO_SELECT_"]
         if event == "_OPEN_DOTEMP_":
@@ -98,14 +98,14 @@ def write_digobjs(digobj_file, dotemp_file, client, repo, gui_window):
             print(write_obj_error)
             close_wbs(digobj_wb, dotemp_wb)
         else:
-            print(f'Written: {digobj_title}, {digobj_date}')
+            print(f'{digobj_title}, {digobj_date}')
     close_wbs(digobj_wb, dotemp_wb)
+    print(f'\n{"*" * 112}\n{" " * 40}Finished writing {total_digobjs} to {dotemp_sheet}\n{"*" * 112}')
     if errors:
-        error_message = "ERROR: Could not find any records with the following titles:\n"
+        error_message = "\nERROR: Could not find any records with the following titles:\n"
         for error in errors:
             error_message += "\n" + error + "\n"
         print(error_message)
-    print(f'\n{"*" * 112}\n{" " * 40}Finished writing {total_digobjs} to {dotemp_sheet}\n{"*" * 112}')
     gui_window[f'{"_WRITE_DOS_"}'].update(disabled=False)
     return errors
 
@@ -119,7 +119,7 @@ def get_results(client, repo, digobj_title, digobj_date):
     archobj_uri = None
     resource_uri = None
     search_archobjs = client.get_paged(f"/repositories/{repo}/search",
-                                       params={"q": f'title:"{digobj_title}"',  # , {digobj_date}
+                                       params={"q": f'title:"{digobj_title}, {digobj_date}"',
                                                "type": ['archival_object']})
     search_results = []
     for results in search_archobjs:
@@ -134,7 +134,7 @@ def get_results(client, repo, digobj_title, digobj_date):
             result_child = result["child_container_u_sstr"][0]
             result_option = f'{result["title"]}; {box_coll_list[0]}; {result_child}; {box_coll_list[1]}'
             search_options.append(result_option)
-        multresults_layout = [[psg.Text(f'\n\nFound multiple options for\n{digobj_title}, {digobj_date}\n\n'  # TODO: add Box and Folder #, and identifier (ms1000) for info
+        multresults_layout = [[psg.Text(f'\n\nFound multiple options for\n{digobj_title}, {digobj_date}\n\n'
                                         f'Choose one of the following:\n')],
                               [psg.Listbox(search_options, size=(120, 5),
                                            key="_ARCHOBJ_FILE_")],
@@ -144,18 +144,14 @@ def get_results(client, repo, digobj_title, digobj_date):
         while selection is True:
             multresults_event, multresults_values = multresults_window.Read()
             if multresults_event == "_SELECT_ARCHOBJ_":
+                result_title = multresults_values["_ARCHOBJ_FILE_"][0].split(";")[0]
                 for result in search_results:
-                    selection_title = multresults_values["_ARCHOBJ_FILE_"][0].split(";")[0]  # TODO: this part is screwing with me - not matching on second option at all, despite being perflectly matched
-                    print(selection_title)
-                    if result["title"].split(";")[0] == selection_title:
+                    if result["title"] == result_title:
                         archobj_uri = result["uri"]
                         resource_uri = result["resource"]
                         selection = False
                         multresults_window.close()
                         break
-                    else:
-                        psg.popup_error("ERROR\nSelected result does not match!", font=("Roboto", 14),
-                                        keep_on_top=True)
     elif len(search_results) == 0:
         print(f'\nERROR: No results found for:\n{digobj_title}, {digobj_date}\n')
         return archobj_uri, resource_uri
@@ -175,7 +171,6 @@ def write_digobj(resource_uri, archobj_uri, digobj_id, digobj_title, digobj_publ
     for column_num, column_value in column_map.items():
         dotemp_sheet.cell(row=write_row_index, column=column_num).value = column_value
     write_row_index += 1
-    # print(f'Wrote {digobj_title} to {dotemp_file}\n')
     try:
         dotemp_wb.save(dotemp_file)
         return None
