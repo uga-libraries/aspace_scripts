@@ -1,3 +1,5 @@
+# This script exports all published resources for every repository in an ArchivesSpace instance and assigns a
+# concatenated version of the identifier as the filename.
 import re
 from secrets import *
 from asnake.client import ASnakeClient

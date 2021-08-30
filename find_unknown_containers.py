@@ -1,3 +1,5 @@
+# This script finds parent archival objects that have 'unknown container' in their identifier and logs it into a
+# spreadsheet
 import csv
 from secrets import *
 from asnake.client import ASnakeClient

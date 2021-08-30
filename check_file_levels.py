@@ -1,3 +1,5 @@
+# This script was checking for parent files (archival objects with children) that did not have Instances or top
+# containers. It's confusing.
 from asnake.client import ASnakeClient
 from secrets import *
 import datetime
