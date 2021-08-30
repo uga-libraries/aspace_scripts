@@ -1,3 +1,5 @@
+# This script checks archival objects for specific resources in ArchivesSpace and if they have an 'unknown_container' as
+# the value of their indicator, then it deletes that object.
 from secrets import *
 from asnake.aspace import ASpace
 from asnake.client import ASnakeClient

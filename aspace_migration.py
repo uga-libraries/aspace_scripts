@@ -1,3 +1,5 @@
+# This script runs a gamut of different cleanup functions against ArchivesSpace after UGA's migration from Archivists'
+# Toolkit
 from asnake.client import ASnakeClient
 from secrets import *
 from logging.handlers import TimedRotatingFileHandler

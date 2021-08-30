@@ -1,3 +1,5 @@
+# This script checks all archival objects in ArchivesSpace and checks to see what objects are listed as collections, as
+# well as updating ms3789 to change its objects from 'collection' to 'file'
 from asnake.client import ASnakeClient
 from secrets import *
 import json

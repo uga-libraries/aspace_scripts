@@ -1,3 +1,6 @@
+# This script writes all subjects and agents to a spreadsheet with their title and URI. This script was made as the
+# first step in a project to cleanup subjects and agents in ArchivesSpace. The final step is outlined in
+# update_subjects_agents.py
 from openpyxl import Workbook
 from secrets import *
 from asnake.aspace import ASpace

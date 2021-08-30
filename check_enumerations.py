@@ -1,3 +1,5 @@
+# This script checks a standard list of controlled vocabularly lists and updates ArchivesSpace by deleting or merging
+# values
 from asnake.client import ASnakeClient
 import logging
 from secrets import *

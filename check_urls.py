@@ -1,3 +1,6 @@
+# This script exported all published resources from ASpace as an EAD.xml file, then took those files and looked for any
+# URLs that were present, checked their HTTP status and if it returned an error (anything but 200), then logged the
+# error in a spreadsheet. This was later adapted to make the Check URLs custom report plugin for ArchivesSpace.
 import requests
 import os
 import csv
