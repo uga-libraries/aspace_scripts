@@ -1,3 +1,9 @@
+/* This runs several cleanup operations on our data before migration from Archivists' Toolkit to ArchivesSpace. It
+ updates digital objects to change their repository based on their METS Identifier, delete component unique identifier
+ (aka subdivisionIdentifier) content in that field, replaces leftover xml namespaces from note contents, set
+ resource level to file when it is collection, and update specific digital objects to University Archives (repository 6)
+*/
+
 UPDATE DigitalObjects SET repositoryId=4 WHERE repositoryId=6 AND metsIdentifier LIKE 'harg%';
 UPDATE DigitalObjects SET repositoryId=9 WHERE metsIdentifier LIKE 'hmap%';
 UPDATE ResourcesComponents SET subdivisionIdentifier = '' WHERE NOT subdivisionIdentifier='';

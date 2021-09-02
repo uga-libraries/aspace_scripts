@@ -1,4 +1,7 @@
-/*This grabs all top containers that have no barcodes and are associated with published archival objects and resources*/
+/* This grabs all top containers that have no barcodes and are associated with published archival objects and
+ resources
+*/
+
 SELECT
     repo.name AS Repository,
     ao.title AS Linked_Archival_Object_Title,

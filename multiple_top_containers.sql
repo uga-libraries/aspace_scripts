@@ -1,4 +1,4 @@
-/*This grabs published archival objects with multiple top container instances attached to it*/
+/* This grabs published archival objects with multiple top container instances attached to it */
 
 SELECT
     repository.name AS Repository,
