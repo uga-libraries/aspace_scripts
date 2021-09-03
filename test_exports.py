@@ -1,13 +1,14 @@
+# This script tests the exports from the ArchivesSpace API
 from asnake.client import ASnakeClient
 from secrets import *
 
 # as_repo = input("Enter ArchivesSpace repository #: ")
-client = ASnakeClient(baseurl=as_api, username=as_username, password=as_password)
+client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 
 # Dublin Core XML
-# do_dc = client.get("/repositories/2/digital_objects/dublin_core/2679.xml")
-# # print(do.content)
+do_dc = client.get("/repositories/2/digital_objects/dublin_core/2679.xml")
+print(do_dc.content)
 # with open("do_dublincore.xml", "wb") as file:
 #     file.write(do_dc.content)
 #     file.close()
@@ -20,8 +21,8 @@ print(do_dc_fmt.content)
 #     file.close()
 
 # METS XML
-# mets_xml = client.get("/repositories/2/digital_objects/mets/2679.xml", params={"dmd": "PKG410P"})
-# # print(mets_xml.content)
+mets_xml = client.get("/repositories/2/digital_objects/mets/2679.xml", params={"dmd": "PKG410P"})
+print(mets_xml.content)
 # with open("do_mets.xml", "wb") as file:
 #     file.write(mets_xml.content)
 #     file.close()
@@ -34,8 +35,8 @@ print(mets_fmt.content)
 #     file.close()
 #
 # # MODS XML
-# mods_xml = client.get('/repositories/2/digital_objects/mods/2679.xml')
-# # print(mods_xml.content)
+mods_xml = client.get('/repositories/2/digital_objects/mods/2679.xml')
+print(mods_xml.content)
 # with open("do_mods.xml", "wb") as file:
 #     file.write(mods_xml.content)
 #     file.close()
@@ -71,8 +72,8 @@ print(labels_fmt, labels_fmt.content)
 #     file.close()
 #
 # # EAC-CPF XML
-# eac_cpf_xml = client.get('/repositories/2/archival_contexts/people/159.xml')
-# # print(eac_cpf_xml, eac_cpf_xml.content)
+eac_cpf_xml = client.get('/repositories/2/archival_contexts/people/159.xml')
+print(eac_cpf_xml, eac_cpf_xml.content)
 # with open("eac_cpf.xml", "wb") as file:
 #     file.write(eac_cpf_xml.content)
 #     file.close()
@@ -85,8 +86,8 @@ print(eac_cpf_fmt, eac_cpf_fmt.content)
 #     file.close()
 #
 # # EAC-CPF Corporate XML
-# eac_cpf_corp_xml = client.get('/repositories/2/archival_contexts/corporate_entities/1238.xml')
-# # print(eac_cpf_corp_xml, eac_cpf_corp_xml.content)
+eac_cpf_corp_xml = client.get('/repositories/2/archival_contexts/corporate_entities/1238.xml')
+print(eac_cpf_corp_xml, eac_cpf_corp_xml.content)
 # with open("eac_cpf_corp.xml", "wb") as file:
 #     file.write(eac_cpf_corp_xml.content)
 #     file.close()
@@ -99,8 +100,8 @@ print(eac_cpf_corp_fmt, eac_cpf_corp_fmt.content)
 #     file.close()
 #
 # # EAC-CPF Family XML
-# eac_cpf_fam_xml = client.get('/repositories/2/archival_contexts/families/479.xml')
-# # print(eac_cpf_fam_xml, eac_cpf_fam_xml.content)
+eac_cpf_fam_xml = client.get('/repositories/2/archival_contexts/families/479.xml')
+print(eac_cpf_fam_xml, eac_cpf_fam_xml.content)
 # with open("eac_cpf_fam.xml", "wb") as file:
 #     file.write(eac_cpf_fam_xml.content)
 #     file.close()
@@ -113,15 +114,15 @@ print(eac_cpf_fam_fmt, eac_cpf_fam_fmt.content)
 #     file.close()
 #
 # # EAC-CPF Software XML
-# eac_cpf_soft_xml = client.get('/repositories/2/archival_contexts/softwares/1.xml')
-# # print(eac_cpf_soft_xml, eac_cpf_soft_xml.content)
+eac_cpf_soft_xml = client.get('/repositories/2/archival_contexts/softwares/1.xml')
+print(eac_cpf_soft_xml, eac_cpf_soft_xml.content)
 # with open("eac_cpf_soft.xml", "wb") as file:
 #     file.write(eac_cpf_soft_xml.content)
 #     file.close()
 #
 # #EAC-CPF Software FMT
-# eac_cpf_soft_fmt = client.get('/repositories/2/archival_contexts/softwares/1.:fmt/metadata')
-# print(eac_cpf_soft_fmt, eac_cpf_soft_fmt.content)
+eac_cpf_soft_fmt = client.get('/repositories/2/archival_contexts/softwares/1.:fmt/metadata')
+print(eac_cpf_soft_fmt, eac_cpf_soft_fmt.content)
 # with open("eac_cpf_soft.fmt", "wb") as file:
 #     file.write(eac_cpf_soft_fmt.content)
 #     file.close()

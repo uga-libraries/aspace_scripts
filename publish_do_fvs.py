@@ -1,3 +1,4 @@
+# This script publishes all digital object file versions
 from asnake.client import ASnakeClient
 from secrets import *
 

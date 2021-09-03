@@ -1,3 +1,5 @@
+# This script grabs subjects from the ArchivesSpace database and their links to all resources and generates a
+# spreadsheet with that info
 import csv
 import mysql.connector
 import pathlib
