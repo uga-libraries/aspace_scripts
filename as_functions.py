@@ -1,3 +1,5 @@
+# A test script with different functions testing how to start up a series of background import jobs and monitor their
+# progress
 from asnake.client import ASnakeClient
 from pathlib import Path
 import os

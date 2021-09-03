@@ -1,3 +1,4 @@
+# This script updates ArchivesSpace containers from a spreadsheet
 from openpyxl import load_workbook
 from secrets import *
 from asnake.aspace import ASpace

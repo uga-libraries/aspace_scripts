@@ -1,4 +1,4 @@
-# import re
+# This script takes info from the Dates of Existence and puts them in the Dates field to display when exporting
 from openpyxl import load_workbook
 from secrets import *
 from asnake.client import ASnakeClient

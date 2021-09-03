@@ -1,3 +1,4 @@
+# This script unpublishes resources in ArchivesSpace when they have a [CLOSED] in the resource id
 from asnake.client import ASnakeClient
 import re
 import logging

@@ -1,3 +1,4 @@
+# This scirpt deletes and merges subjects from a spreadsheet
 from openpyxl import load_workbook
 from secrets import *
 from asnake.client import ASnakeClient

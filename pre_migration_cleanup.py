@@ -1,3 +1,4 @@
+# This script attempts to run SQL updates on Archivists' Toolkit databases for cleanup before migrating to ArchivesSpace
 import MySQLdb as sql
 from secrets import *
 
