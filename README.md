@@ -1,7 +1,3 @@
-# About
-Just a few scripts when working with ArchivesSpace
-
-
 # Scripts
 
 ## api_test_project_template.py
@@ -55,8 +51,11 @@ This script publishes all digital object file versions
 ## publish_dos.py
 This script publishes all digital objects
 
+## russell_av_containers.sql
+This grabs all top containers with instance types that are either "moving_images" or "audio" for the Russell repository
+
 ## russell_cleanup_script.sql
-This runs several cleanup operations on our data before migration from Archivists' Toolkit to ArchivesSpace. It updates FileVersions Use Statements to Audio-Streaming, changed Digital Object Show attribute to onLoad instead of replace, replaces leftover xml namespaces from note contents, and sets instance and extent types for some stubborn items.
+This runs several cleanup operations on our data for the Russell repository before migration from Archivists' Toolkit to ArchivesSpace. It updates FileVersions Use Statements to Audio-Streaming, changed Digital Object Show attribute to onLoad instead of replace, replaces leftover xml namespaces from note contents, and sets instance and extent types for some stubborn items.
 
 ## test_exports.py
 This script tests the exports from the ArchivesSpace API
