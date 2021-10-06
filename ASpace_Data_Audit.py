@@ -121,40 +121,38 @@ def agents_lookalikes():
     pass
 
 
-def artypes(wb):
-    accession_res_types = ["collection", "papers", "records"]
-    ar_types = wb.create_sheet("Accession Resource Types")
-    ar_types.title = "Accession Resource Types"
+def check_controlled_vocabs(wb, terms, vocab, vocab_num):
+    vocab_sheet = wb.create_sheet(f"{vocab}")
+    vocab_sheet.title = f"{vocab}"
     write_row_index = 2
-    headers = ["Accession Resource Type", "Read Only?", "Suppressed?"]
+    headers = [f"{vocab}", "Read Only?", "Suppressed?"]
     header_index = 0
-    for row in ar_types.iter_rows(min_row=1, max_col=3):
+    for row in vocab_sheet.iter_rows(min_row=1, max_col=3):
         for cell in row:
-            ar_types[cell.coordinate] = headers[header_index]
-            ar_types[cell.coordinate].font = Font(bold=True, underline='single')
+            vocab_sheet[cell.coordinate] = headers[header_index]
+            vocab_sheet[cell.coordinate].font = Font(bold=True, underline='single')
             header_index += 1
-    artypes_statement = ('SELECT CONVERT(ev.value using utf8) AS Accession_Resource_Type, ev.readonly AS Read_Only, '
-                         'ev.suppressed AS Suppressed '
-                         'FROM enumeration_value AS ev '
-                         'WHERE enumeration_id = 7')
+    statement = (f'SELECT CONVERT(ev.value using utf8) AS {vocab}, ev.readonly AS Read_Only, '
+                 f'ev.suppressed AS Suppressed '
+                 f'FROM enumeration_value AS ev '
+                 f'WHERE enumeration_id = {vocab_num}')
     connection, cursor = connect_db()
-    results = query_database(connection, cursor, artypes_statement)
+    results = query_database(connection, cursor, statement)
     checked_results = []
     for result in list(results):
         single_row = list(result)
         list_index = 0
         for value in single_row:
             if value == 0:
-                print(value)
                 single_row[list_index] = False
             elif value == 1:
                 single_row[list_index] = True
             list_index += 1
         checked_results.append(single_row)
     for result in checked_results:
-        ar_types.append(result)
-        if result[0] not in accession_res_types:
-            for cell in ar_types[f'{write_row_index}:{write_row_index}']:
+        vocab_sheet.append(result)
+        if result[0] not in terms:
+            for cell in vocab_sheet[f'{write_row_index}:{write_row_index}']:
                 cell.fill = PatternFill(start_color='FFFF0000',
                                         end_color='FFFF0000',
                                         fill_type='solid')
@@ -165,7 +163,23 @@ def run():
     workbook, spreadsheet = generate_spreadsheet()
     cuids(workbook)
     tcnb(workbook)
-    artypes(workbook)
+    controlled_vocabs = {"Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
+                         "Name_Sources": [["local", "naf", "ingest"], 4],
+                         "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
+                                             "microform", "mixed_materials", "moving_images", "electronic_records",
+                                             "artifacts"], 22],
+                         "Extent_Types": [["linear_feet", "box(es)", "item(s)", "gigabyte(s)", "pages", "volume(s)",
+                                           "moving_image(s)", "interview(s)", "minutes", "folder(s)",
+                                           "sound_recording(s)", "photograph(s)", "oversize_folders"], 14],
+                         "Digital_Object_Types": [["cartographic", "mixed_materials", "moving_image",
+                                                   "software_multimedia", "sound_recording", "still_image", "text"],
+                                                  12],
+                         "Container_Types": [["box", "folder", "oversized_box", "oversized_folder", "reel", "roll",
+                                              "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
+                                              "drawer", "cassette", "rr", "cs"], 16],
+                         "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
+    for term, info in controlled_vocabs.items():
+        check_controlled_vocabs(workbook, info[0], term, info[1])
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
