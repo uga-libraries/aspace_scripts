@@ -40,26 +40,7 @@ def generate_spreadsheet():
     return wb, data_spreadsheet
 
 
-def cuids(wb):
-    comp_uniqid = wb.create_sheet("Component Unique Identifiers")
-    comp_uniqid.title = "Component Unique Identifiers"
-    headers = ["Repository", "Resource ID", "RefID", "Archival Object Title", "Component Unique Identifier"]
-    header_index = 0
-    for row in comp_uniqid.iter_rows(min_row=1, max_col=5):
-        for cell in row:
-            comp_uniqid[cell.coordinate] = headers[header_index]
-            comp_uniqid[cell.coordinate].font = Font(bold=True, underline='single')
-            header_index += 1
-    cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
-                      'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
-                      'FROM archival_object AS ao '
-                      'JOIN repository AS repo ON repo.id = ao.repo_id '
-                      'JOIN resource ON resource.id = ao.root_record_id '
-                      'WHERE component_id is not Null '
-                      'AND resource.publish is True '
-                      'AND ao.publish is True')
-    connection, cursor = connect_db()
-    results = query_database(connection, cursor, cuid_statement)
+def standardize_resids(results):
     redone_results = []
     for result in list(results):
         new_result = list(result)
@@ -70,55 +51,42 @@ def cuids(wb):
                 combined_id += id_comp + '-'
         new_result[1] = combined_id[:-1]
         redone_results.append(new_result)
-    for result in redone_results:
-        comp_uniqid.append(result)
+    return redone_results
 
 
-def tcnb(wb):
-    tc_nobar = wb.create_sheet("Top Containers - No Barcodes")
-    tc_nobar.title = "Top Containers - No Barcodes"
-    headers = ["Repository", "Resource ID", "RefID", "Archival Object Title", "Top Container Indicator",
-               "Container Type"]
+def update_booleans(results):
+    checked_results = []
+    for result in list(results):
+        single_row = list(result)
+        list_index = 0
+        for value in single_row:
+            if value == 0:
+                single_row[list_index] = False
+            elif value == 1:
+                single_row[list_index] = True
+            list_index += 1
+        checked_results.append(single_row)
+    return checked_results
+
+
+def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
+    tc_nobar = wb.create_sheet(sheetname)
+    tc_nobar.title = sheetname
     header_index = 0
-    for row in tc_nobar.iter_rows(min_row=1, max_col=6):
+    for row in tc_nobar.iter_rows(min_row=1, max_col=len(headers)):
         for cell in row:
             tc_nobar[cell.coordinate] = headers[header_index]
             tc_nobar[cell.coordinate].font = Font(bold=True, underline='single')
             header_index += 1
-    tcnb_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
-                      'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
-                      'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
-                      'FROM top_container '
-                      'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
-                      'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
-                      'JOIN instance ON instance.id = sub_container.instance_id '
-                      'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                      'JOIN repository AS repo ON repo.id = ao.repo_id '
-                      'JOIN resource ON resource.id = ao.root_record_id '
-                      'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
-                      'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
     connection, cursor = connect_db()
-    results = query_database(connection, cursor, tcnb_statement)
-    redone_results = []
-    for result in list(results):
-        new_result = list(result)
-        res_id_list = new_result[1].strip('[').strip(']').replace('"', '').split(',')
-        combined_id = ''
-        for id_comp in res_id_list:
-            if id_comp != 'null':
-                combined_id += id_comp + '-'
-        new_result[1] = combined_id[:-1]
-        redone_results.append(new_result)
-    for result in redone_results:
+    results = query_database(connection, cursor, statement)
+    standardized_results = results
+    if resid is True:
+        standardized_results = standardize_resids(results)
+    if booleans is True:
+        standardized_results = update_booleans(standardized_results)
+    for result in standardized_results:
         tc_nobar.append(result)
-
-
-def subject_lookalikes():
-    pass
-
-
-def agents_lookalikes():
-    pass
 
 
 def check_controlled_vocabs(wb, terms, vocab, vocab_num):
@@ -137,19 +105,8 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
                  f'FROM enumeration_value AS ev '
                  f'WHERE enumeration_id = {vocab_num}')
     connection, cursor = connect_db()
-    results = query_database(connection, cursor, statement)
-    checked_results = []
-    for result in list(results):
-        single_row = list(result)
-        list_index = 0
-        for value in single_row:
-            if value == 0:
-                single_row[list_index] = False
-            elif value == 1:
-                single_row[list_index] = True
-            list_index += 1
-        checked_results.append(single_row)
-    for result in checked_results:
+    standardize_results = update_booleans(query_database(connection, cursor, statement))
+    for result in standardize_results:
         vocab_sheet.append(result)
         if result[0] not in terms:
             for cell in vocab_sheet[f'{write_row_index}:{write_row_index}']:
@@ -161,9 +118,11 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
 
 def run():
     workbook, spreadsheet = generate_spreadsheet()
-    cuids(workbook)
-    tcnb(workbook)
-    controlled_vocabs = {"Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
+    controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
+                                                "occupation", "style_period", "technique", "temporal", "topical",
+                                                "uniform_title"], 54],
+                         "Subject_Sources": [["aat", "lcsh", "local", "tgn", "lcnaf"], 23],
+                         "Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
                          "Name_Sources": [["local", "naf", "ingest"], 4],
                          "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
                                              "microform", "mixed_materials", "moving_images", "electronic_records",
@@ -180,6 +139,38 @@ def run():
                          "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
     for term, info in controlled_vocabs.items():
         check_controlled_vocabs(workbook, info[0], term, info[1])
+    cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
+                      'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
+                      'FROM archival_object AS ao '
+                      'JOIN repository AS repo ON repo.id = ao.repo_id '
+                      'JOIN resource ON resource.id = ao.root_record_id '
+                      'WHERE component_id is not Null '
+                      'AND resource.publish is True '
+                      'AND ao.publish is True')
+    tcnb_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
+                      'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
+                      'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
+                      'FROM top_container '
+                      'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
+                      'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
+                      'JOIN instance ON instance.id = sub_container.instance_id '
+                      'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+                      'JOIN repository AS repo ON repo.id = ao.repo_id '
+                      'JOIN resource ON resource.id = ao.root_record_id '
+                      'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
+                      'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
+    users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
+                       'FROM user')
+    queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+                                                 "Component Unique Identifier"], cuid_statement, {"resids": True},
+                                                {"booleans": False}],
+               "Top Containers - No Barcodes": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+                                                 "Top Container Indicator", "Container Type"], tcnb_statement,
+                                                {"resids": True}, {"booleans": False}],
+               "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
+                         {"resids": False}, {"booleans": True}]}
+    for query, info in queries.items():
+        run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
