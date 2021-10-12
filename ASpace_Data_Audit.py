@@ -161,6 +161,20 @@ def run():
                       'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
     users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
                        'FROM user')
+    aomtc_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
+                       'COUNT(*) AS Top_Container_Count '
+                       'FROM instance '
+                       'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+                       'JOIN repository ON repository.id = ao.repo_id '
+                       'WHERE ao.publish is True AND instance.instance_type_id != 349 '
+                       'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
+    aomdo_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
+                       'COUNT(*) AS Digital_Object_Count '
+                       'FROM instance '
+                       'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+                       'JOIN repository ON repository.id = ao.repo_id '
+                       'WHERE ao.publish is True AND instance.instance_type_id = 349 '
+                       'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
     queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
                                                  "Component Unique Identifier"], cuid_statement, {"resids": True},
                                                 {"booleans": False}],
@@ -168,7 +182,13 @@ def run():
                                                  "Top Container Indicator", "Container Type"], tcnb_statement,
                                                 {"resids": True}, {"booleans": False}],
                "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
-                         {"resids": False}, {"booleans": True}]}
+                         {"resids": False}, {"booleans": True}],
+               "Arch Objs-Multiple Top Conts": [["Repository", "Archival Object ID", "RefID",
+                                                 "Archival Object title", "Top Container Count"],
+                                                aomtc_statement, {"resids": False}, {"booleans": False}],
+               "Arch Objs-Multiple Dig Objs": [["Repository", "Archival Object ID", "RefID",
+                                                "Archival Object Title", "Digital Object Count"],
+                                               aomdo_statement, {"resids": False}, {"booleans": False}]}
     for query, info in queries.items():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     workbook.remove(workbook["Sheet"])
