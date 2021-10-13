@@ -3,6 +3,9 @@
 ## api_test_project_template.py
 This script is a template for making scripts working with the ArchivesSpace API, particularly working with the ArchivesSnake library: https://github.com/archivesspace-labs/ArchivesSnake
 
+## ASpace_Data_Audit.py
+A series of SQL queries to generate a spreadsheet for data cleanup.
+
 ## as_functions.py
 A test script with different functions testing how to start up a series of background import jobs and monitor their progress
 
