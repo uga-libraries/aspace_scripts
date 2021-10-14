@@ -159,6 +159,18 @@ def run():
                       'JOIN resource ON resource.id = ao.root_record_id '
                       'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
                       'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
+    tcnind_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
+                        'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
+                        'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
+                        'FROM top_container '
+                        'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
+                        'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
+                        'JOIN instance ON instance.id = sub_container.instance_id '
+                        'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+                        'JOIN repository AS repo ON repo.id = ao.repo_id '
+                        'JOIN resource ON resource.id = ao.root_record_id '
+                        'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
+                        'WHERE top_container.indicator is NULL AND ao.publish is True AND resource.publish is True')
     users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
                        'FROM user')
     aomtc_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
@@ -175,11 +187,24 @@ def run():
                        'JOIN repository ON repository.id = ao.repo_id '
                        'WHERE ao.publish is True AND instance.instance_type_id = 349 '
                        'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
+    aocollevel_statement = ("SELECT repository.name AS Repository, resource.identifier AS Resource_ID, ao.title, "
+                            "ao.ref_id, ev.value "
+                            "FROM archival_object AS ao "
+                            "JOIN resource ON ao.root_record_id = resource.id "
+                            "JOIN repository ON ao.repo_id = repository.id "
+                            "JOIN enumeration_value AS ev ON ao.level_id = ev.id "
+                            "WHERE ao.parent_id is Null "
+                            "AND ao.publish = 1 "
+                            "AND resource.publish is True "
+                            "AND ao.level_id = 889")
     queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
                                                  "Component Unique Identifier"], cuid_statement, {"resids": True},
                                                 {"booleans": False}],
                "Top Containers - No Barcodes": [["Repository", "Resource ID", "RefID", "Archival Object Title",
                                                  "Top Container Indicator", "Container Type"], tcnb_statement,
+                                                {"resids": True}, {"booleans": False}],
+               "Top Containers - No Indicator": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+                                                 "Top Container Indicator", "Container Type"], tcnind_statement,
                                                 {"resids": True}, {"booleans": False}],
                "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
                          {"resids": False}, {"booleans": True}],
@@ -188,7 +213,9 @@ def run():
                                                 aomtc_statement, {"resids": False}, {"booleans": False}],
                "Arch Objs-Multiple Dig Objs": [["Repository", "Archival Object ID", "RefID",
                                                 "Archival Object Title", "Digital Object Count"],
-                                               aomdo_statement, {"resids": False}, {"booleans": False}]}
+                                               aomdo_statement, {"resids": False}, {"booleans": False}],
+               "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
+                                               "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}]}
     for query, info in queries.items():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     workbook.remove(workbook["Sheet"])
