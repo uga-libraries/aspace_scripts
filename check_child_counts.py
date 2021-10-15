@@ -13,20 +13,25 @@ client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 
 
-def check_child_counts(tree_info, child_counts, aspace_coll_id):
+def check_child_counts(tree_info, child_counts, root_uri, aspace_coll_id, client, top_level=False):
     if tree_info["child_count"] >= 1000 and tree_info["uri"] not in child_counts:
         child_counts[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
                                                aspace_coll_id)
         print(aspace_coll_id)
-    if tree_info["precomputed_waypoints"]:
-        for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][""].items():
+    if "precomputed_waypoints" in tree_info and tree_info["child_count"] != 0:
+        if top_level is True:
+            waypoint_key = ""
+        else:
+            waypoint_key = tree_info["uri"]
+        for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][waypoint_key].items():
             for child in waypoint_info:
                 if child["child_count"] >= 1000:
                     child_counts[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
                                                        aspace_coll_id)
-                    print(aspace_coll_id)
-                if "precomputed_waypoints" in child:
-                    check_child_counts(child, child_counts, aspace_coll_id)
+                print(" " * 10 + f'Checking {child["title"]}')
+                children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
+                                                                       "published_only": True}).json()
+                check_child_counts(children, child_counts, root_uri, aspace_coll_id, client, top_level=False)
     return child_counts
 
 
@@ -47,8 +52,11 @@ for repo in repos:
         combined_aspace_id_clean = id_combined_regex.sub('', combined_id)
         if resource.json()["publish"] is True:
             if resource.status_code == 200:
-                tree_info = client.get(f'/repositories/{repo_id}/resources/{resource_id}/tree/root').json()
-                child_counts = check_child_counts(tree_info, child_counts, combined_id)
+                root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
+                tree_info = client.get(f'{root_uri}/tree/root').json()
+                print(combined_id)
+                child_counts = check_child_counts(tree_info, child_counts, root_uri, combined_id, client,
+                                                  top_level=True)
 
 new_dict = json.dumps(child_counts)
 load_dict = json.loads(new_dict)
@@ -60,5 +68,8 @@ with open("data/check_child_count.csv", "w", encoding="utf8", newline='') as fil
     file.close()
 
 
-# tree_info = client.get("/repositories/8/resources/5666/tree/root").json()
-# print(tree_info)
+# root_uri = "/repositories/4/resources/1151"
+# tree_info = client.get("/repositories/4/resources/1151/tree/root").json()
+# child_counts = {}
+# new_children = check_child_counts(tree_info, child_counts, root_uri, "ms905", client, top_level=True)
+# print(new_children)
