@@ -66,10 +66,3 @@ with open("data/check_child_count.csv", "w", encoding="utf8", newline='') as fil
         fields = [str(child), str(data[0]), str(data[1]), str(data[2]), str(data[3])]
         writer.writerow(fields)
     file.close()
-
-
-# root_uri = "/repositories/4/resources/1151"
-# tree_info = client.get("/repositories/4/resources/1151/tree/root").json()
-# child_counts = {}
-# new_children = check_child_counts(tree_info, child_counts, root_uri, "ms905", client, top_level=True)
-# print(new_children)
