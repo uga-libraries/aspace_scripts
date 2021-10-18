@@ -1,8 +1,16 @@
 import mysql.connector as mysql
+import re
+from asnake.client import ASnakeClient
 from mysql.connector import errorcode
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from secrets import *
+
+id_field_regex = re.compile(r"(^id_+\d)")
+id_combined_regex = re.compile(r'[\W_]+', re.UNICODE)
+
+client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
+client.authorize()
 
 
 def connect_db():
@@ -114,6 +122,54 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
                                         end_color='FFFF0000',
                                         fill_type='solid')
         write_row_index += 1
+
+
+def check_child_counts(tree_info, child_counts, root_uri, aspace_coll_id, client, top_level=False):
+    levels = []
+    if tree_info["uri"] not in child_counts:
+        child_counts[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["level"], aspace_coll_id)
+        print(aspace_coll_id)
+    if "precomputed_waypoints" in tree_info and tree_info["child_count"] != 0:
+        if top_level is True:
+            waypoint_key = ""
+        else:
+            waypoint_key = tree_info["uri"]
+        for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][waypoint_key].items():
+            for child in waypoint_info:
+                if child["level"] not in levels:
+                    child_counts[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
+                                                       aspace_coll_id)
+                print(" " * 10 + f'Checking {child["title"]}')
+                children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
+                                                                       "published_only": True}).json()
+                check_child_counts(children, child_counts, root_uri, aspace_coll_id, client, top_level=False)
+    return child_counts
+
+
+def check_ao_levels():
+    child_levels = {}
+    repos = client.get("repositories").json()
+    for repo in repos:
+        print(repo["name"] + "\n")
+        repo_id = repo["uri"].split("/")[2]
+        resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
+        for resource_id in resources:
+            resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
+            combined_id = ""
+            for field, value in resource.json().items():
+                id_match = id_field_regex.match(field)
+                if id_match:
+                    combined_id += value + "-"
+            combined_id = combined_id[:-1]
+            combined_aspace_id_clean = id_combined_regex.sub('', combined_id)
+            if resource.json()["publish"] is True:
+                if resource.status_code == 200:
+                    root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
+                    tree_info = client.get(f'{root_uri}/tree/root').json()
+                    print(combined_id)
+                    child_levels = check_child_counts(tree_info, child_levels, root_uri, combined_id, client,
+                                                      top_level=True)
+    return child_levels
 
 
 def run():
