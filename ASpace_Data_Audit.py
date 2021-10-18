@@ -197,6 +197,10 @@ def run():
                             "AND ao.publish = 1 "
                             "AND resource.publish is True "
                             "AND ao.level_id = 889")
+    eadid_statement = ("SELECT repository.name, resource.title, resource.identifier, resource.ead_id "
+                       "FROM resource "
+                       "JOIN repository ON repository.id = resource.repo_id "
+                       "WHERE resource.ead_id is not NULL AND resource.publish is TRUE")
     queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
                                                  "Component Unique Identifier"], cuid_statement, {"resids": True},
                                                 {"booleans": False}],
@@ -215,7 +219,9 @@ def run():
                                                 "Archival Object Title", "Digital Object Count"],
                                                aomdo_statement, {"resids": False}, {"booleans": False}],
                "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
-                                               "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}]}
+                                               "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
+               "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
+                           {"resids": True}, {"booleans": False}]}
     for query, info in queries.items():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     workbook.remove(workbook["Sheet"])
