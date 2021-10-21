@@ -28,7 +28,6 @@ def check_child_counts(tree_info, child_counts, root_uri, aspace_coll_id, client
                 if child["child_count"] >= 1000:
                     child_counts[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
                                                        aspace_coll_id)
-                print(" " * 10 + f'Checking {child["title"]}')
                 children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
                                                                        "published_only": True}).json()
                 check_child_counts(children, child_counts, root_uri, aspace_coll_id, client, top_level=False)
