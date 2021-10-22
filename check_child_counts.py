@@ -13,10 +13,10 @@ client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 
 
-def check_child_counts(tree_info, child_counts, root_uri, aspace_coll_id, client, top_level=False):
+def check_child_counts(tree_info, child_counts, root_uri, aspace_coll_id, client, repository, top_level=False):
     if tree_info["child_count"] >= 1000 and tree_info["uri"] not in child_counts:
         child_counts[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
-                                               aspace_coll_id)
+                                               aspace_coll_id, repository)
         print(aspace_coll_id)
     if "precomputed_waypoints" in tree_info and tree_info["child_count"] != 0:
         if top_level is True:
@@ -28,10 +28,10 @@ def check_child_counts(tree_info, child_counts, root_uri, aspace_coll_id, client
                 if child["child_count"] >= 1000:
                     child_counts[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
                                                        aspace_coll_id)
-                print(" " * 10 + f'Checking {child["title"]}')
                 children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
                                                                        "published_only": True}).json()
-                check_child_counts(children, child_counts, root_uri, aspace_coll_id, client, top_level=False)
+                check_child_counts(children, child_counts, root_uri, aspace_coll_id, client, repository,
+                                   top_level=False)
     return child_counts
 
 
@@ -55,7 +55,7 @@ for repo in repos:
                 root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
                 tree_info = client.get(f'{root_uri}/tree/root').json()
                 print(combined_id)
-                child_counts = check_child_counts(tree_info, child_counts, root_uri, combined_id, client,
+                child_counts = check_child_counts(tree_info, child_counts, root_uri, combined_id, client, repo["name"],
                                                   top_level=True)
 
 new_dict = json.dumps(child_counts)
@@ -63,6 +63,6 @@ load_dict = json.loads(new_dict)
 with open("data/check_child_count.csv", "w", encoding="utf8", newline='') as file:
     writer = csv.writer(file)
     for child, data in load_dict.items():
-        fields = [str(child), str(data[0]), str(data[1]), str(data[2]), str(data[3])]
+        fields = [str(child), str(data[0]), str(data[1]), str(data[2]), str(data[3], str(data[4]))]
         writer.writerow(fields)
     file.close()
