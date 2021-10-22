@@ -124,12 +124,21 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
         write_row_index += 1
 
 
-def check_child_levels(tree_info, child_counts, root_uri, aspace_coll_id, client, top_level=False):
+def check_gc_levels(top_child_uri):
     levels = []
-    children = []
-    if tree_info["uri"] not in child_counts:
-        child_counts[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["level"], aspace_coll_id)
-        print(aspace_coll_id)
+    children = client.get(top_child_uri + "/tree/node", params={"node_uri": top_child_uri,
+                                                            "published_only": True}).json()
+    for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
+        for child in waypoint_info:
+            if child["level"] not in levels:
+                levels.append(child["level"])
+    if len(levels) > 1:
+        return top_child_uri
+    else:
+        return None
+
+
+def check_child_levels(tree_info, child_levels, root_uri, aspace_coll_id, client, top_level=False): # TODO: get all the PARENT archival objects from a collection
     if "precomputed_waypoints" in tree_info and tree_info["child_count"] != 0:
         if top_level is True:
             waypoint_key = ""
@@ -137,23 +146,16 @@ def check_child_levels(tree_info, child_counts, root_uri, aspace_coll_id, client
             waypoint_key = tree_info["uri"]
         for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][waypoint_key].items():
             for child in waypoint_info:
-                if child["level"] not in levels:
-                    levels.append(child["level"])
-                    child_counts[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
-                                                       aspace_coll_id)
+                child_levels[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
+                                                   aspace_coll_id)
                 print(" " * 10 + f'Checking {child["title"]}')
                 children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
                                                                        "published_only": True}).json()
-                # check_child_levels(children, child_counts, root_uri, aspace_coll_id, client, top_level=False)
-    try:  # TODO: figure out a way to maintain levels for just the same level
-        if not children:
-            return child_counts
-    finally:
-        if children:
-            check_child_levels(children, child_counts, root_uri, aspace_coll_id, client, top_level=False)
+                check_child_levels(children, child_levels, root_uri, aspace_coll_id, client, top_level=False)
+    return child_levels
 
 
-def check_ao_levels():
+def check_res_levels():
     child_levels = {}
     repos = client.get("repositories").json()
     for repo in repos:
@@ -176,6 +178,10 @@ def check_ao_levels():
                     print(combined_id)
                     child_levels = check_child_levels(tree_info, child_levels, root_uri, combined_id, client,
                                                       top_level=True)
+                    for top_children in child_levels.keys():
+                        level_disparity = check_gc_levels(top_children)
+                        if level_disparity is not None:
+                            print(level_disparity)
     return child_levels
 
 
@@ -292,4 +298,5 @@ def run():
     workbook.save(spreadsheet)
 
 
-run()
+# run()
+check_res_levels()
