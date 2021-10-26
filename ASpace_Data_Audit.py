@@ -145,7 +145,7 @@ def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
         return None, None, None
 
 
-def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, client, repository, top_level=False): # TODO: get all the PARENT archival objects from a collection
+def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, client, repository, top_level=False):
     if tree_info["child_count"] > 0 and tree_info["uri"] not in child_levels:
         child_levels[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
                                                aspace_coll_id, repository, top_level)
@@ -191,7 +191,8 @@ def check_res_levels():
                                                     repo["name"], top_level=True)
                     for top_child_uri, top_child_info in child_levels.items():
                         top_child_uri, top_child_title, level_disparity = check_child_levels(top_child_uri, root_uri,
-                                                                          top_child_info[5], top_child_info[0])
+                                                                                             top_child_info[5],
+                                                                                             top_child_info[0])
                         if level_disparity is not None:
                             print(f'Repo: {repo["name"]}, Resource: {combined_id}, Parent Title: {top_child_title}, '
                                   f'Parent URI: {top_child_uri}, Level Disparity: {level_disparity}')
@@ -289,8 +290,8 @@ def run():
                                                  "Top Container Indicator", "Container Type"], tcnb_statement,
                                                 {"resids": True}, {"booleans": False}],
                "Top Containers - No Indicator": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                 "Top Container Indicator", "Container Type"], tcnind_statement,
-                                                {"resids": True}, {"booleans": False}],
+                                                  "Top Container Indicator", "Container Type"], tcnind_statement,
+                                                 {"resids": True}, {"booleans": False}],
                "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
                          {"resids": False}, {"booleans": True}],
                "Arch Objs-Multiple Top Conts": [["Repository", "Archival Object ID", "RefID",
