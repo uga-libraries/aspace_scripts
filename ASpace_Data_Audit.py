@@ -127,7 +127,7 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
 def check_gc_levels(top_child_uri):
     levels = []
     children = client.get(top_child_uri + "/tree/node", params={"node_uri": top_child_uri,
-                                                            "published_only": True}).json()
+                                                                "published_only": True}).json()
     for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
         for child in waypoint_info:
             if child["level"] not in levels:
