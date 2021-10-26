@@ -124,45 +124,57 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
         write_row_index += 1
 
 
-def check_gc_levels(top_child_uri):
+def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
     levels = []
-    children = client.get(top_child_uri + "/tree/node", params={"node_uri": top_child_uri,
-                                                                "published_only": True}).json()
-    for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
-        for child in waypoint_info:
-            if child["level"] not in levels:
-                levels.append(child["level"])
-    if len(levels) > 1:
-        return top_child_uri
+    if top_level is True:
+        tree_info = client.get(f'{top_child_uri}/tree/root').json()
+        for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][''].items():
+            for child in waypoint_info:
+                if child["level"] not in levels:
+                    levels.append(child["level"])
     else:
-        return None
+        children = client.get(root_uri + "/tree/node", params={"node_uri": top_child_uri,
+                                                               "published_only": True}).json()
+        for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
+            for child in waypoint_info:
+                if child["level"] not in levels:
+                    levels.append(child["level"])
+    if len(levels) > 1:
+        return top_child_uri, top_child_title, levels
+    else:
+        return None, None, None
 
 
-def check_child_levels(tree_info, child_levels, root_uri, aspace_coll_id, client, top_level=False): # TODO: get all the PARENT archival objects from a collection
-    if "precomputed_waypoints" in tree_info and tree_info["child_count"] != 0:
+def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, client, repository, top_level=False): # TODO: get all the PARENT archival objects from a collection
+    if tree_info["child_count"] > 0 and tree_info["uri"] not in child_levels:
+        child_levels[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
+                                               aspace_coll_id, repository, top_level)
+    if "precomputed_waypoints" in tree_info and tree_info["child_count"] > 0:
         if top_level is True:
             waypoint_key = ""
         else:
             waypoint_key = tree_info["uri"]
         for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][waypoint_key].items():
             for child in waypoint_info:
-                child_levels[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
-                                                   aspace_coll_id)
-                print(" " * 10 + f'Checking {child["title"]}')
-                children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
-                                                                       "published_only": True}).json()
-                check_child_levels(children, child_levels, root_uri, aspace_coll_id, client, top_level=False)
+                child_info = client.get(f'{child["uri"]}').json()
+                if child["child_count"] > 0 and child_info["publish"] is True:
+                    child_levels[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
+                                                       aspace_coll_id, repository, False)
+                    children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
+                                                                           "published_only": True}).json()
+                    get_top_children(children, child_levels, root_uri, aspace_coll_id, client, repository,
+                                     top_level=False)
     return child_levels
 
 
 def check_res_levels():
-    child_levels = {}
     repos = client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
         repo_id = repo["uri"].split("/")[2]
         resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
         for resource_id in resources:
+            child_levels = {}
             resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
             combined_id = ""
             for field, value in resource.json().items():
@@ -170,19 +182,19 @@ def check_res_levels():
                 if id_match:
                     combined_id += value + "-"
             combined_id = combined_id[:-1]
-            combined_aspace_id_clean = id_combined_regex.sub('', combined_id)
             if resource.json()["publish"] is True:
                 if resource.status_code == 200:
                     root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
                     tree_info = client.get(f'{root_uri}/tree/root').json()
                     print(combined_id)
-                    child_levels = check_child_levels(tree_info, child_levels, root_uri, combined_id, client,
-                                                      top_level=True)
-                    for top_children in child_levels.keys():
-                        level_disparity = check_gc_levels(top_children)
+                    child_levels = get_top_children(tree_info, child_levels, root_uri, combined_id, client,
+                                                    repo["name"], top_level=True)
+                    for top_child_uri, top_child_info in child_levels.items():
+                        top_child_uri, top_child_title, level_disparity = check_child_levels(top_child_uri, root_uri,
+                                                                          top_child_info[5], top_child_info[0])
                         if level_disparity is not None:
-                            print(level_disparity)
-    return child_levels
+                            print(f'Repo: {repo["name"]}, Resource: {combined_id}, Parent Title: {top_child_title}, '
+                                  f'Parent URI: {top_child_uri}, Level Disparity: {level_disparity}')
 
 
 def run():
