@@ -6,11 +6,11 @@ import os
 import json
 import time
 
-as_username = "cschmidt"  # input("Enter your ArchivesSpace username: ")
-as_password = "coreyaspace"  # input("Enter your ArchivesSpace password: ")
+as_username = input("Enter your ArchivesSpace username: ")
+as_password = input("Enter your ArchivesSpace password: ")
+as_api = input("Enter your ArchivesSpace API URL: ")
 as_repo = input("Enter ArchivesSpace repository #: ")
-# resource_prefix = input("Enter your resource identifier prefix: ")
-as_api = "http://aspace-staging-uga.galib.uga.edu:8089"
+resource_prefix = input("Enter your resource identifier prefix: ")
 client = ASnakeClient(baseurl=as_api, username=as_username, password=as_password)
 client.authorize()
 
