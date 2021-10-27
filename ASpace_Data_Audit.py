@@ -135,10 +135,11 @@ def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
     else:
         children = client.get(root_uri + "/tree/node", params={"node_uri": top_child_uri,
                                                                "published_only": True}).json()
-        for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
-            for child in waypoint_info:
-                if child["level"] not in levels:
-                    levels.append(child["level"])
+        if children["child_count"] != 0:
+            for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
+                for child in waypoint_info:
+                    if child["level"] not in levels:
+                        levels.append(child["level"])
     if len(levels) > 1:
         return top_child_uri, top_child_title, levels
     else:
@@ -167,7 +168,8 @@ def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, client, 
     return child_levels
 
 
-def check_res_levels():
+def check_res_levels(wb):
+    headers = ["Repository", "Resource ID", "Parent Title", "Parent URI", "Level Disparity"]
     repos = client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
@@ -186,7 +188,6 @@ def check_res_levels():
                 if resource.status_code == 200:
                     root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
                     tree_info = client.get(f'{root_uri}/tree/root').json()
-                    print(combined_id)
                     child_levels = get_top_children(tree_info, child_levels, root_uri, combined_id, client,
                                                     repo["name"], top_level=True)
                     for top_child_uri, top_child_info in child_levels.items():
@@ -194,6 +195,16 @@ def check_res_levels():
                                                                                              top_child_info[5],
                                                                                              top_child_info[0])
                         if level_disparity is not None:
+                            tc_nobar = wb.create_sheet("Collection Level Checks")
+                            tc_nobar.title = "Collection Level Checks"
+                            header_index = 0
+                            for row in tc_nobar.iter_rows(min_row=1, max_col=len(headers)):
+                                for cell in row:
+                                    tc_nobar[cell.coordinate] = headers[header_index]
+                                    tc_nobar[cell.coordinate].font = Font(bold=True, underline='single')
+                                    header_index += 1
+                            tc_nobar.append([repo["name"], combined_id, top_child_title, top_child_uri,
+                                             level_disparity])
                             print(f'Repo: {repo["name"]}, Resource: {combined_id}, Parent Title: {top_child_title}, '
                                   f'Parent URI: {top_child_uri}, Level Disparity: {level_disparity}')
 
@@ -306,10 +317,9 @@ def run():
                            {"resids": True}, {"booleans": False}]}
     for query, info in queries.items():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
-
+    check_res_levels(workbook)
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
 
 # run()
-check_res_levels()
