@@ -48,6 +48,18 @@ def generate_spreadsheet():
     return wb, data_spreadsheet
 
 
+def write_headers(wb, sheetname, headers):
+    worksheet = wb.create_sheet(sheetname)
+    worksheet.title = sheetname
+    header_index = 0
+    for row in worksheet.iter_rows(min_row=1, max_col=len(headers)):
+        for cell in row:
+            worksheet[cell.coordinate] = headers[header_index]
+            worksheet[cell.coordinate].font = Font(bold=True, underline='single')
+            header_index += 1
+    return worksheet
+
+
 def standardize_resids(results):
     redone_results = []
     for result in list(results):
@@ -78,14 +90,7 @@ def update_booleans(results):
 
 
 def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
-    tc_nobar = wb.create_sheet(sheetname)
-    tc_nobar.title = sheetname
-    header_index = 0
-    for row in tc_nobar.iter_rows(min_row=1, max_col=len(headers)):
-        for cell in row:
-            tc_nobar[cell.coordinate] = headers[header_index]
-            tc_nobar[cell.coordinate].font = Font(bold=True, underline='single')
-            header_index += 1
+    worksheet = write_headers(wb, sheetname, headers)
     connection, cursor = connect_db()
     results = query_database(connection, cursor, statement)
     standardized_results = results
@@ -94,20 +99,13 @@ def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
     if booleans is True:
         standardized_results = update_booleans(standardized_results)
     for result in standardized_results:
-        tc_nobar.append(result)
+        worksheet.append(result)
 
 
 def check_controlled_vocabs(wb, terms, vocab, vocab_num):
-    vocab_sheet = wb.create_sheet(f"{vocab}")
-    vocab_sheet.title = f"{vocab}"
     write_row_index = 2
-    headers = [f"{vocab}", "Read Only?", "Suppressed?"]
-    header_index = 0
-    for row in vocab_sheet.iter_rows(min_row=1, max_col=3):
-        for cell in row:
-            vocab_sheet[cell.coordinate] = headers[header_index]
-            vocab_sheet[cell.coordinate].font = Font(bold=True, underline='single')
-            header_index += 1
+    headers = [str(vocab), "Read Only?", "Suppressed?"]
+    vocab_sheet = write_headers(wb, str(vocab), headers)
     statement = (f'SELECT CONVERT(ev.value using utf8) AS {vocab}, ev.readonly AS Read_Only, '
                  f'ev.suppressed AS Suppressed '
                  f'FROM enumeration_value AS ev '
@@ -127,10 +125,11 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
 def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
     levels = []
     if top_level is True:
-        tree_info = client.get(f'{top_child_uri}/tree/root').json()
-        for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][''].items():
+        tl_tree = client.get(f'{top_child_uri}/tree/root').json()
+        for waypoint_num, waypoint_info in tl_tree["precomputed_waypoints"][''].items():
             for child in waypoint_info:
-                if child["level"] not in levels:
+                child_info = client.get(f'{child["uri"]}').json()
+                if child["level"] not in levels and child_info["publish"] is True:
                     levels.append(child["level"])
     else:
         children = client.get(root_uri + "/tree/node", params={"node_uri": top_child_uri,
@@ -140,16 +139,16 @@ def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
                 for child in waypoint_info:
                     if child["level"] not in levels:
                         levels.append(child["level"])
+    if "file" in levels and "item" in levels and len(levels) == 2:
+        levels.clear()
     if len(levels) > 1:
         return top_child_uri, top_child_title, levels
-    else:
-        return None, None, None
 
 
-def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, client, repository, top_level=False):
+def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, as_client, top_level=False):
     if tree_info["child_count"] > 0 and tree_info["uri"] not in child_levels:
         child_levels[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
-                                               aspace_coll_id, repository, top_level)
+                                               aspace_coll_id, top_level)
     if "precomputed_waypoints" in tree_info and tree_info["child_count"] > 0:
         if top_level is True:
             waypoint_key = ""
@@ -157,19 +156,19 @@ def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, client, 
             waypoint_key = tree_info["uri"]
         for waypoint_num, waypoint_info in tree_info["precomputed_waypoints"][waypoint_key].items():
             for child in waypoint_info:
-                child_info = client.get(f'{child["uri"]}').json()
+                child_info = as_client.get(f'{child["uri"]}').json()
                 if child["child_count"] > 0 and child_info["publish"] is True:
                     child_levels[f'{child["uri"]}'] = (child["title"], child["child_count"], child["level"],
-                                                       aspace_coll_id, repository, False)
-                    children = client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
-                                                                           "published_only": True}).json()
-                    get_top_children(children, child_levels, root_uri, aspace_coll_id, client, repository,
-                                     top_level=False)
+                                                       aspace_coll_id, False)
+                    children = as_client.get(root_uri + "/tree/node", params={"node_uri": child["uri"],
+                                                                              "published_only": True}).json()
+                    get_top_children(children, child_levels, root_uri, aspace_coll_id, as_client, top_level=False)
     return child_levels
 
 
 def check_res_levels(wb):
     headers = ["Repository", "Resource ID", "Parent Title", "Parent URI", "Level Disparity"]
+    reslevel_sheet = write_headers(wb, "Collection Level Checks", headers)
     repos = client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
@@ -189,137 +188,136 @@ def check_res_levels(wb):
                     root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
                     tree_info = client.get(f'{root_uri}/tree/root').json()
                     child_levels = get_top_children(tree_info, child_levels, root_uri, combined_id, client,
-                                                    repo["name"], top_level=True)
+                                                    top_level=True)
                     for top_child_uri, top_child_info in child_levels.items():
-                        top_child_uri, top_child_title, level_disparity = check_child_levels(top_child_uri, root_uri,
-                                                                                             top_child_info[5],
-                                                                                             top_child_info[0])
+                        top_child_uri, top_child_title, level_disparity = check_child_levels(top_child_uri,
+                                                                                             root_uri,
+                                                                                             top_child_info[4],
+                                                                                             top_child_info[0]) or \
+                                                                          (None, None, None)
                         if level_disparity is not None:
-                            tc_nobar = wb.create_sheet("Collection Level Checks")
-                            tc_nobar.title = "Collection Level Checks"
-                            header_index = 0
-                            for row in tc_nobar.iter_rows(min_row=1, max_col=len(headers)):
-                                for cell in row:
-                                    tc_nobar[cell.coordinate] = headers[header_index]
-                                    tc_nobar[cell.coordinate].font = Font(bold=True, underline='single')
-                                    header_index += 1
-                            tc_nobar.append([repo["name"], combined_id, top_child_title, top_child_uri,
-                                             level_disparity])
+                            reslevel_sheet.append([repo["name"], combined_id, top_child_title, top_child_uri,
+                                                  str(level_disparity)])
                             print(f'Repo: {repo["name"]}, Resource: {combined_id}, Parent Title: {top_child_title}, '
                                   f'Parent URI: {top_child_uri}, Level Disparity: {level_disparity}')
 
 
 def run():
     workbook, spreadsheet = generate_spreadsheet()
-    controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
-                                                "occupation", "style_period", "technique", "temporal", "topical",
-                                                "uniform_title"], 54],
-                         "Subject_Sources": [["aat", "lcsh", "local", "tgn", "lcnaf"], 23],
-                         "Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
-                         "Name_Sources": [["local", "naf", "ingest"], 4],
-                         "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
-                                             "microform", "mixed_materials", "moving_images", "electronic_records",
-                                             "artifacts"], 22],
-                         "Extent_Types": [["linear_feet", "box(es)", "item(s)", "gigabyte(s)", "pages", "volume(s)",
-                                           "moving_image(s)", "interview(s)", "minutes", "folder(s)",
-                                           "sound_recording(s)", "photograph(s)", "oversize_folders"], 14],
-                         "Digital_Object_Types": [["cartographic", "mixed_materials", "moving_image",
-                                                   "software_multimedia", "sound_recording", "still_image", "text"],
-                                                  12],
-                         "Container_Types": [["box", "folder", "oversized_box", "oversized_folder", "reel", "roll",
-                                              "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
-                                              "drawer", "cassette", "rr", "cs"], 16],
-                         "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
-    for term, info in controlled_vocabs.items():
-        check_controlled_vocabs(workbook, info[0], term, info[1])
-    cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
-                      'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
-                      'FROM archival_object AS ao '
-                      'JOIN repository AS repo ON repo.id = ao.repo_id '
-                      'JOIN resource ON resource.id = ao.root_record_id '
-                      'WHERE component_id is not Null '
-                      'AND resource.publish is True '
-                      'AND ao.publish is True')
-    tcnb_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
-                      'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
-                      'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
-                      'FROM top_container '
-                      'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
-                      'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
-                      'JOIN instance ON instance.id = sub_container.instance_id '
-                      'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                      'JOIN repository AS repo ON repo.id = ao.repo_id '
-                      'JOIN resource ON resource.id = ao.root_record_id '
-                      'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
-                      'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
-    tcnind_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
-                        'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
-                        'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
-                        'FROM top_container '
-                        'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
-                        'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
-                        'JOIN instance ON instance.id = sub_container.instance_id '
-                        'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                        'JOIN repository AS repo ON repo.id = ao.repo_id '
-                        'JOIN resource ON resource.id = ao.root_record_id '
-                        'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
-                        'WHERE top_container.indicator is NULL AND ao.publish is True AND resource.publish is True')
-    users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
-                       'FROM user')
-    aomtc_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
-                       'COUNT(*) AS Top_Container_Count '
-                       'FROM instance '
-                       'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                       'JOIN repository ON repository.id = ao.repo_id '
-                       'WHERE ao.publish is True AND instance.instance_type_id != 349 '
-                       'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
-    aomdo_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
-                       'COUNT(*) AS Digital_Object_Count '
-                       'FROM instance '
-                       'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                       'JOIN repository ON repository.id = ao.repo_id '
-                       'WHERE ao.publish is True AND instance.instance_type_id = 349 '
-                       'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
-    aocollevel_statement = ("SELECT repository.name AS Repository, resource.identifier AS Resource_ID, ao.title, "
-                            "ao.ref_id, ev.value "
-                            "FROM archival_object AS ao "
-                            "JOIN resource ON ao.root_record_id = resource.id "
-                            "JOIN repository ON ao.repo_id = repository.id "
-                            "JOIN enumeration_value AS ev ON ao.level_id = ev.id "
-                            "WHERE ao.parent_id is Null "
-                            "AND ao.publish = 1 "
-                            "AND resource.publish is True "
-                            "AND ao.level_id = 889")
-    eadid_statement = ("SELECT repository.name, resource.title, resource.identifier, resource.ead_id "
-                       "FROM resource "
-                       "JOIN repository ON repository.id = resource.repo_id "
-                       "WHERE resource.ead_id is not NULL AND resource.publish is TRUE")
-    queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                 "Component Unique Identifier"], cuid_statement, {"resids": True},
-                                                {"booleans": False}],
-               "Top Containers - No Barcodes": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                 "Top Container Indicator", "Container Type"], tcnb_statement,
-                                                {"resids": True}, {"booleans": False}],
-               "Top Containers - No Indicator": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                  "Top Container Indicator", "Container Type"], tcnind_statement,
-                                                 {"resids": True}, {"booleans": False}],
-               "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
-                         {"resids": False}, {"booleans": True}],
-               "Arch Objs-Multiple Top Conts": [["Repository", "Archival Object ID", "RefID",
-                                                 "Archival Object title", "Top Container Count"],
-                                                aomtc_statement, {"resids": False}, {"booleans": False}],
-               "Arch Objs-Multiple Dig Objs": [["Repository", "Archival Object ID", "RefID",
-                                                "Archival Object Title", "Digital Object Count"],
-                                               aomdo_statement, {"resids": False}, {"booleans": False}],
-               "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
-                                               "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
-               "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
-                           {"resids": True}, {"booleans": False}]}
-    for query, info in queries.items():
-        run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     check_res_levels(workbook)
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
+    # controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
+    #                                             "occupation", "style_period", "technique", "temporal", "topical",
+    #                                             "uniform_title"], 54],
+    #                      "Subject_Sources": [["aat", "lcsh", "local", "tgn", "lcnaf"], 23],
+    #                      "Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
+    #                      "Name_Sources": [["local", "naf", "ingest"], 4],
+    #                      "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
+    #                                          "microform", "mixed_materials", "moving_images", "electronic_records",
+    #                                          "artifacts"], 22],
+    #                      "Extent_Types": [["linear_feet", "box(es)", "item(s)", "gigabyte(s)", "pages", "volume(s)",
+    #                                        "moving_image(s)", "interview(s)", "minutes", "folder(s)",
+    #                                        "sound_recording(s)", "photograph(s)", "oversize_folders"], 14],
+    #                      "Digital_Object_Types": [["cartographic", "mixed_materials", "moving_image",
+    #                                                "software_multimedia", "sound_recording", "still_image", "text"],
+    #                                               12],
+    #                      "Container_Types": [["box", "folder", "oversized_box", "oversized_folder", "reel", "roll",
+    #                                           "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
+    #                                           "drawer", "cassette", "rr", "cs"], 16],
+    #                      "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
+    # for term, info in controlled_vocabs.items():
+    #     check_controlled_vocabs(workbook, info[0], term, info[1])
+    # cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
+    #                   'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
+    #                   'FROM archival_object AS ao '
+    #                   'JOIN repository AS repo ON repo.id = ao.repo_id '
+    #                   'JOIN resource ON resource.id = ao.root_record_id '
+    #                   'WHERE component_id is not Null '
+    #                   'AND resource.publish is True '
+    #                   'AND ao.publish is True')
+    # tcnb_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
+    #                   'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
+    #                   'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
+    #                   'FROM top_container '
+    #                   'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
+    #                   'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
+    #                   'JOIN instance ON instance.id = sub_container.instance_id '
+    #                   'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                   'JOIN repository AS repo ON repo.id = ao.repo_id '
+    #                   'JOIN resource ON resource.id = ao.root_record_id '
+    #                   'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
+    #                   'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
+    # tcnind_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
+    #                     'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
+    #                     'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
+    #                     'FROM top_container '
+    #                     'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
+    #                     'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
+    #                     'JOIN instance ON instance.id = sub_container.instance_id '
+    #                     'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                     'JOIN repository AS repo ON repo.id = ao.repo_id '
+    #                     'JOIN resource ON resource.id = ao.root_record_id '
+    #                     'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
+    #                     'WHERE top_container.indicator is NULL AND ao.publish is True AND resource.publish is True')
+    # users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
+    #                    'FROM user')
+    # aomtc_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
+    #                    'COUNT(*) AS Top_Container_Count '
+    #                    'FROM instance '
+    #                    'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                    'JOIN repository ON repository.id = ao.repo_id '
+    #                    'WHERE ao.publish is True AND instance.instance_type_id != 349 '
+    #                    'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
+    # aomdo_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
+    #                    'COUNT(*) AS Digital_Object_Count '
+    #                    'FROM instance '
+    #                    'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                    'JOIN repository ON repository.id = ao.repo_id '
+    #                    'WHERE ao.publish is True AND instance.instance_type_id = 349 '
+    #                    'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
+    # aocollevel_statement = ("SELECT repository.name AS Repository, resource.identifier AS Resource_ID, ao.title, "
+    #                         "ao.ref_id, ev.value "
+    #                         "FROM archival_object AS ao "
+    #                         "JOIN resource ON ao.root_record_id = resource.id "
+    #                         "JOIN repository ON ao.repo_id = repository.id "
+    #                         "JOIN enumeration_value AS ev ON ao.level_id = ev.id "
+    #                         "WHERE ao.parent_id is Null "
+    #                         "AND ao.publish = 1 "
+    #                         "AND resource.publish is True "
+    #                         "AND ao.level_id = 889")
+    # eadid_statement = ("SELECT repository.name, resource.title, resource.identifier, resource.ead_id "
+    #                    "FROM resource "
+    #                    "JOIN repository ON repository.id = resource.repo_id "
+    #                    "WHERE resource.ead_id is not NULL AND resource.publish is TRUE")
+    # queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+    #                                              "Component Unique Identifier"], cuid_statement, {"resids": True},
+    #                                             {"booleans": False}],
+    #            "Top Containers - No Barcodes": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+    #                                              "Top Container Indicator", "Container Type"], tcnb_statement,
+    #                                             {"resids": True}, {"booleans": False}],
+    #            "Top Containers - No Indicator": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+    #                                               "Top Container Indicator", "Container Type"], tcnind_statement,
+    #                                              {"resids": True}, {"booleans": False}],
+    #            "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
+    #                      {"resids": False}, {"booleans": True}],
+    #            "Arch Objs-Multiple Top Conts": [["Repository", "Archival Object ID", "RefID",
+    #                                              "Archival Object title", "Top Container Count"],
+    #                                             aomtc_statement, {"resids": False}, {"booleans": False}],
+    #            "Arch Objs-Multiple Dig Objs": [["Repository", "Archival Object ID", "RefID",
+    #                                             "Archival Object Title", "Digital Object Count"],
+    #                                            aomdo_statement, {"resids": False}, {"booleans": False}],
+    #            "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
+    #                                            "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
+    #            "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
+    #                        {"resids": True}, {"booleans": False}]}
+    # for query, info in queries.items():
+    #     run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
+    # workbook.remove(workbook["Sheet"])
+    # workbook.save(spreadsheet)
 
 
 # run()
+
+tree_info = client.get('/repositories/4/resources/4549/tree/root').json()
+print(tree_info)
