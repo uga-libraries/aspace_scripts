@@ -1,6 +1,7 @@
 import mysql.connector as mysql
 import re
 from asnake.client import ASnakeClient
+from thefuzz import fuzz
 from mysql.connector import errorcode
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -202,9 +203,67 @@ def check_res_levels(wb):
                                   f'Parent URI: {top_child_uri}, Level Disparity: {level_disparity}')
 
 
+def check_subjects(wb):
+    write_row_index = 2
+    headers = ["Original Subject", "Original Subject ID", "Duplicate Subject", "Duplicate Subject ID"]
+    vocab_sheet = write_headers(wb, "Duplicate Subjects", headers)
+    statement = f'SELECT title, id FROM subject'
+    connection, cursor = connect_db()
+    standardize_results = query_database(connection, cursor, statement)
+    compare_subjects = [subject for subject in standardize_results]
+    for original_subject in standardize_results:
+        count = 0
+        matches = {}
+        for comparing_subject in compare_subjects:
+            if comparing_subject[0] == original_subject[0]:
+                count += 1
+                if original_subject[0] in matches:
+                    matches[original_subject[0]].append(comparing_subject[0])
+                    matches[original_subject[0]].append(comparing_subject[1])
+                else:
+                    matches[original_subject[0]] = [comparing_subject[0], comparing_subject[1]]
+        if count > 1:
+            result = []
+            for sub_info in matches.values():
+                for matched_subjects in sub_info:
+                    result.append(matched_subjects)
+            vocab_sheet.append(result)
+            write_row_index += 1
+
+
+def check_agents(wb):
+    write_row_index = 2
+    headers = ["Original Agent", "Original Agent ID", "Duplicate Agent", "Duplicate Agent ID"]
+    vocab_sheet = write_headers(wb, "Duplicate Agents", headers)
+    statement = f'SELECT sort_name, id FROM name_person'
+    connection, cursor = connect_db()
+    standardize_results = query_database(connection, cursor, statement)
+    compare_agents = [agent for agent in standardize_results]
+    total_duplicates = []
+    for original_agent in standardize_results:
+        count = 0
+        matches = {}
+        for comparing_agent in compare_agents:
+            if comparing_agent[0] == original_agent[0]:
+                count += 1
+                if original_agent[0] in matches:
+                    matches[original_agent[0]].append(comparing_agent[0])
+                    matches[original_agent[0]].append(comparing_agent[1])
+                else:
+                    matches[original_agent[0]] = [comparing_agent[0], comparing_agent[1]]
+        if count > 1:
+            total_duplicates.append(matches)
+
+            result = []
+            for sub_info in matches.values():
+                for matched_agents in sub_info:
+                    result.append(matched_agents)
+            vocab_sheet.append(result)
+            write_row_index += 1
+
+
 def run():
     workbook, spreadsheet = generate_spreadsheet()
-    check_res_levels(workbook)
     controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
                                                 "occupation", "style_period", "technique", "temporal", "topical",
                                                 "uniform_title"], 54],
@@ -311,6 +370,9 @@ def run():
                            {"resids": True}, {"booleans": False}]}
     for query, info in queries.items():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
+    check_subjects(workbook)
+    check_agents(workbook)
+    # check_res_levels(workbook)
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
