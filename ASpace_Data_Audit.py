@@ -211,24 +211,27 @@ def check_subjects(wb):
     connection, cursor = connect_db()
     standardize_results = query_database(connection, cursor, statement)
     compare_subjects = [subject for subject in standardize_results]
+    total_matches = []
+    total_index = 0
     for original_subject in standardize_results:
         count = 0
         matches = {}
         for comparing_subject in compare_subjects:
             if comparing_subject[0] == original_subject[0]:
                 count += 1
-                if original_subject[0] in matches:
-                    matches[original_subject[0]].append(comparing_subject[0])
-                    matches[original_subject[0]].append(comparing_subject[1])
-                else:
-                    matches[original_subject[0]] = [comparing_subject[0], comparing_subject[1]]
-        if count > 1:
-            result = []
-            for sub_info in matches.values():
-                for matched_subjects in sub_info:
-                    result.append(matched_subjects)
-            vocab_sheet.append(result)
-            write_row_index += 1
+                for match in total_matches:  # This is all so wrong
+                    if original_subject[0] in match:
+                        total_matches[total_index].append(comparing_subject[0])
+                        total_matches[total_index].append(comparing_subject[1])
+                        total_index += 1
+                    else:
+                        if not original_subject[1] == comparing_subject[1]:
+                            total_matches.append([original_subject[0], original_subject[1], comparing_subject[0],
+                                                  comparing_subject[1]])
+                            matches[original_subject[0]] = [comparing_subject[0], comparing_subject[1]]
+    for match_info in total_matches:
+        vocab_sheet.append(match_info)
+        write_row_index += 1
 
 
 def check_agents(wb):
@@ -283,8 +286,8 @@ def run():
                                               "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
                                               "drawer", "cassette", "rr", "cs"], 16],
                          "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
-    for term, info in controlled_vocabs.items():
-        check_controlled_vocabs(workbook, info[0], term, info[1])
+    # for term, info in controlled_vocabs.items():
+    #     check_controlled_vocabs(workbook, info[0], term, info[1])
     cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
                       'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
                       'FROM archival_object AS ao '
@@ -368,8 +371,8 @@ def run():
                                                "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
                "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
                            {"resids": True}, {"booleans": False}]}
-    for query, info in queries.items():
-        run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
+    # for query, info in queries.items():
+    #     run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     check_subjects(workbook)
     check_agents(workbook)
     # check_res_levels(workbook)
