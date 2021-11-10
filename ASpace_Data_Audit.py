@@ -326,7 +326,6 @@ def check_urls(wb, source_path):
     repo = None
     resid = None
     for file in os.listdir(source_path):
-        print(file)
         tree = etree.parse(source_path + "/" + file)
         root = tree.getroot()
         for element in root.getiterator():
@@ -337,21 +336,12 @@ def check_urls(wb, source_path):
                     repo = element.text
             if element.tag == "unitid":
                 resid = element.text
-            if element.tag == "extref":
-                attributes = dict(element.attrib)
-                print(element.getparent().getparent().tag)
-                for key, value in attributes.items():
-                    if key == "{http://www.w3.org/1999/xlink}href":
-                        response = check_url(value)
-                        if response:
-                            checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, value, response)
-            if element.tag == "dao":
+            if element.tag == "extref" or element.tag == "dao":
                 attributes = dict(element.attrib)
                 for key, value in attributes.items():
                     if key == "{http://www.w3.org/1999/xlink}href":
                         response = check_url(value)
                         if response:
-                            print("Digital Object: ", attributes["{http://www.w3.org/1999/xlink}title"], response)
                             checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, value, response)
             else:
                 element_words = str(element.text).split(" ")
@@ -360,8 +350,6 @@ def check_urls(wb, source_path):
                     clean_word = word.strip(",.;:`~()<>")
                     match = web_url_regex.match(clean_word)
                     if match:
-                        print(element.getparent().tag)
-                        print(clean_word)
                         response = check_url(clean_word)
                         if response:
                             checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, clean_word,
@@ -496,7 +484,7 @@ def run():
     # # check_res_levels(workbook)
     source_path = create_export_folder()
     # export_eads(workbook, source_path, client)
-    check_urls(workbook, source_path)
+    # check_urls(workbook, source_path)
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
