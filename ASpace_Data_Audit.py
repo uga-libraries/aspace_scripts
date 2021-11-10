@@ -1,16 +1,21 @@
 import mysql.connector as mysql
+import os
 import re
+import requests
 from asnake.client import ASnakeClient
-from thefuzz import fuzz
+from lxml import etree
 from mysql.connector import errorcode
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+from pathlib import Path
 from secrets import *
 
 id_field_regex = re.compile(r"(^id_+\d)")
 id_combined_regex = re.compile(r'[\W_]+', re.UNICODE)
+web_url_regex = re.compile(r"""(?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@)))""")
 
-client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
+
+client: ASnakeClient = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 
 
@@ -261,117 +266,237 @@ def duplicate_agent_persons(wb):
             write_row_index += 1
 
 
+def create_export_folder():
+    try:
+        current_directory = os.getcwd()
+        for root, directories, files in os.walk(current_directory):
+            if "source_eads" in directories:
+                return str(Path(os.getcwd(), "source_eads"))
+            else:
+                raise Exception
+    except Exception as source_ead_error:
+        print(str(source_ead_error) + "\nNo source_eads folder found, creating new one...", end='', flush=True)
+        current_directory = os.getcwd()
+        folder = "source_eads"
+        source_path = os.path.join(current_directory, folder)
+        os.mkdir(source_path)
+        print("{} folder created\n".format(folder))
+        return str(Path(source_path))
+
+
+def export_eads(wb, source_path, client):
+    headers = ["Repository", "Resource ID", "Export Error"]
+    checkexports_sheet = write_headers(wb, "Export Errors", headers)
+    repos = client.get("repositories").json()
+    for repo in repos:
+        print(repo["name"] + "\n")
+        repo_id = repo["uri"].split("/")[2]
+        resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
+        for resource_id in resources:
+            resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
+            combined_id = ""
+            for field, value in resource.json().items():
+                id_match = id_field_regex.match(field)
+                if id_match:
+                    combined_id += value + "-"
+            combined_id = combined_id[:-1]
+            combined_aspace_id_clean = id_combined_regex.sub('', combined_id)
+            if resource.status_code == 200:
+                if resource.json()["publish"] is True:
+                    try:
+                        export_ead = client.get("repositories/{}/resource_descriptions/{}.xml".format(repo_id,
+                                                                                                      resource_id),
+                                                params={"include_unpublished": False, "include_daos": True,
+                                                        "numbered_cs": True, "print_pdf": False, "ead3": False})
+                    except Exception as e:
+                        checkexports_sheet.append(repo["name", combined_aspace_id_clean, str(e)])
+                    else:
+                        filepath = str(Path(source_path, combined_aspace_id_clean)) + ".xml"
+                        with open(filepath, "wb") as local_file:
+                            local_file.write(export_ead.content)
+                            local_file.close()
+                            print("Exported: {}".format(combined_id))
+            else:
+                checkexports_sheet.append(repo["name"], combined_aspace_id_clean, resource.json())
+
+
+def check_urls(wb, source_path):
+    headers = ["Repository", "Resource ID", "Parent Title", "URL", "URL Error Code"]
+    checkurls_sheet = write_headers(wb, "URL Errors", headers)
+    repo = None
+    resid = None
+    for file in os.listdir(source_path):
+        print(file)
+        tree = etree.parse(source_path + "/" + file)
+        root = tree.getroot()
+        for element in root.getiterator():
+            element.tag = etree.QName(element).localname
+        for element in root.findall(".//*"):
+            if element.tag == "corpname":
+                if element.getparent().tag == "repository":
+                    repo = element.text
+            if element.tag == "unitid":
+                resid = element.text
+            if element.tag == "extref":
+                attributes = dict(element.attrib)
+                print(element.getparent().getparent().tag)
+                for key, value in attributes.items():
+                    if key == "{http://www.w3.org/1999/xlink}href":
+                        response = check_url(value)
+                        if response:
+                            checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, value, response)
+            if element.tag == "dao":
+                attributes = dict(element.attrib)
+                for key, value in attributes.items():
+                    if key == "{http://www.w3.org/1999/xlink}href":
+                        response = check_url(value)
+                        if response:
+                            print("Digital Object: ", attributes["{http://www.w3.org/1999/xlink}title"], response)
+                            checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, value, response)
+            else:
+                element_words = str(element.text).split(" ")
+                filtered_words = list(filter(None, element_words))
+                for word in filtered_words:
+                    clean_word = word.strip(",.;:`~()<>")
+                    match = web_url_regex.match(clean_word)
+                    if match:
+                        print(element.getparent().tag)
+                        print(clean_word)
+                        response = check_url(clean_word)
+                        if response:
+                            checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, clean_word,
+                                                   response)
+
+
+def check_url(url):
+    response_code = None
+    try:
+        response = requests.get(url, allow_redirects=True)
+        if response.history:
+            for redresp in response.history:
+                print(redresp.status_code, redresp.url)
+        if response.status_code != 200:
+            response_code = str(response)
+    except Exception as e:
+        response_code = str(e)
+    finally:
+        return response_code
+
+
 def run():
     workbook, spreadsheet = generate_spreadsheet()
-    controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
-                                                "occupation", "style_period", "technique", "temporal", "topical",
-                                                "uniform_title"], 54],
-                         "Subject_Sources": [["aat", "lcsh", "local", "tgn", "lcnaf"], 23],
-                         "Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
-                         "Name_Sources": [["local", "naf", "ingest"], 4],
-                         "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
-                                             "microform", "mixed_materials", "moving_images", "electronic_records",
-                                             "artifacts"], 22],
-                         "Extent_Types": [["linear_feet", "box(es)", "item(s)", "gigabyte(s)", "pages", "volume(s)",
-                                           "moving_image(s)", "interview(s)", "minutes", "folder(s)",
-                                           "sound_recording(s)", "photograph(s)", "oversize_folders"], 14],
-                         "Digital_Object_Types": [["cartographic", "mixed_materials", "moving_image",
-                                                   "software_multimedia", "sound_recording", "still_image", "text"],
-                                                  12],
-                         "Container_Types": [["box", "folder", "oversized_box", "oversized_folder", "reel", "roll",
-                                              "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
-                                              "drawer", "cassette", "rr", "cs"], 16],
-                         "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
-    for term, info in controlled_vocabs.items():
-        check_controlled_vocabs(workbook, info[0], term, info[1])
-    cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
-                      'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
-                      'FROM archival_object AS ao '
-                      'JOIN repository AS repo ON repo.id = ao.repo_id '
-                      'JOIN resource ON resource.id = ao.root_record_id '
-                      'WHERE component_id is not Null '
-                      'AND resource.publish is True '
-                      'AND ao.publish is True')
-    tcnb_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
-                      'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
-                      'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
-                      'FROM top_container '
-                      'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
-                      'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
-                      'JOIN instance ON instance.id = sub_container.instance_id '
-                      'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                      'JOIN repository AS repo ON repo.id = ao.repo_id '
-                      'JOIN resource ON resource.id = ao.root_record_id '
-                      'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
-                      'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
-    tcnind_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
-                        'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
-                        'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
-                        'FROM top_container '
-                        'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
-                        'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
-                        'JOIN instance ON instance.id = sub_container.instance_id '
-                        'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                        'JOIN repository AS repo ON repo.id = ao.repo_id '
-                        'JOIN resource ON resource.id = ao.root_record_id '
-                        'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
-                        'WHERE top_container.indicator is NULL AND ao.publish is True AND resource.publish is True')
-    users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
-                       'FROM user')
-    aomtc_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
-                       'COUNT(*) AS Top_Container_Count '
-                       'FROM instance '
-                       'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                       'JOIN repository ON repository.id = ao.repo_id '
-                       'WHERE ao.publish is True AND instance.instance_type_id != 349 '
-                       'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
-    aomdo_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
-                       'COUNT(*) AS Digital_Object_Count '
-                       'FROM instance '
-                       'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
-                       'JOIN repository ON repository.id = ao.repo_id '
-                       'WHERE ao.publish is True AND instance.instance_type_id = 349 '
-                       'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
-    aocollevel_statement = ("SELECT repository.name AS Repository, resource.identifier AS Resource_ID, ao.title, "
-                            "ao.ref_id, ev.value "
-                            "FROM archival_object AS ao "
-                            "JOIN resource ON ao.root_record_id = resource.id "
-                            "JOIN repository ON ao.repo_id = repository.id "
-                            "JOIN enumeration_value AS ev ON ao.level_id = ev.id "
-                            "WHERE ao.parent_id is Null "
-                            "AND ao.publish = 1 "
-                            "AND resource.publish is True "
-                            "AND ao.level_id = 889")
-    eadid_statement = ("SELECT repository.name, resource.title, resource.identifier, resource.ead_id "
-                       "FROM resource "
-                       "JOIN repository ON repository.id = resource.repo_id "
-                       "WHERE resource.ead_id is not NULL AND resource.publish is TRUE")
-    queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                 "Component Unique Identifier"], cuid_statement, {"resids": True},
-                                                {"booleans": False}],
-               "Top Containers - No Barcodes": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                 "Top Container Indicator", "Container Type"], tcnb_statement,
-                                                {"resids": True}, {"booleans": False}],
-               "Top Containers - No Indicator": [["Repository", "Resource ID", "RefID", "Archival Object Title",
-                                                  "Top Container Indicator", "Container Type"], tcnind_statement,
-                                                 {"resids": True}, {"booleans": False}],
-               "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
-                         {"resids": False}, {"booleans": True}],
-               "Arch Objs-Multiple Top Conts": [["Repository", "Archival Object ID", "RefID",
-                                                 "Archival Object title", "Top Container Count"],
-                                                aomtc_statement, {"resids": False}, {"booleans": False}],
-               "Arch Objs-Multiple Dig Objs": [["Repository", "Archival Object ID", "RefID",
-                                                "Archival Object Title", "Digital Object Count"],
-                                               aomdo_statement, {"resids": False}, {"booleans": False}],
-               "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
-                                               "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
-               "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
-                           {"resids": True}, {"booleans": False}]}
-    for query, info in queries.items():
-        run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
-    duplicate_subjects(workbook)
-    duplicate_agent_persons(workbook)
-    # check_res_levels(workbook)
+    # controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
+    #                                             "occupation", "style_period", "technique", "temporal", "topical",
+    #                                             "uniform_title"], 54],
+    #                      "Subject_Sources": [["aat", "lcsh", "local", "tgn", "lcnaf"], 23],
+    #                      "Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
+    #                      "Name_Sources": [["local", "naf", "ingest"], 4],
+    #                      "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
+    #                                          "microform", "mixed_materials", "moving_images", "electronic_records",
+    #                                          "artifacts"], 22],
+    #                      "Extent_Types": [["linear_feet", "box(es)", "item(s)", "gigabyte(s)", "pages", "volume(s)",
+    #                                        "moving_image(s)", "interview(s)", "minutes", "folder(s)",
+    #                                        "sound_recording(s)", "photograph(s)", "oversize_folders"], 14],
+    #                      "Digital_Object_Types": [["cartographic", "mixed_materials", "moving_image",
+    #                                                "software_multimedia", "sound_recording", "still_image", "text"],
+    #                                               12],
+    #                      "Container_Types": [["box", "folder", "oversized_box", "oversized_folder", "reel", "roll",
+    #                                           "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
+    #                                           "drawer", "cassette", "rr", "cs"], 16],
+    #                      "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
+    # for term, info in controlled_vocabs.items():
+    #     check_controlled_vocabs(workbook, info[0], term, info[1])
+    # cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
+    #                   'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
+    #                   'FROM archival_object AS ao '
+    #                   'JOIN repository AS repo ON repo.id = ao.repo_id '
+    #                   'JOIN resource ON resource.id = ao.root_record_id '
+    #                   'WHERE component_id is not Null '
+    #                   'AND resource.publish is True '
+    #                   'AND ao.publish is True')
+    # tcnb_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
+    #                   'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
+    #                   'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
+    #                   'FROM top_container '
+    #                   'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
+    #                   'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
+    #                   'JOIN instance ON instance.id = sub_container.instance_id '
+    #                   'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                   'JOIN repository AS repo ON repo.id = ao.repo_id '
+    #                   'JOIN resource ON resource.id = ao.root_record_id '
+    #                   'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
+    #                   'WHERE top_container.barcode is NULL AND ao.publish is True AND resource.publish is True')
+    # tcnind_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, '
+    #                     'ao.ref_id AS Linked_Archival_Object_REFID, ao.title AS Linked_Archival_Object_Title, '
+    #                     'top_container.indicator, CONVERT(ev.value using utf8) AS Container_Type '
+    #                     'FROM top_container '
+    #                     'JOIN top_container_link_rlshp AS top_rlsh ON top_rlsh.top_container_id = top_container.id '
+    #                     'JOIN sub_container ON top_rlsh.sub_container_id = sub_container.id '
+    #                     'JOIN instance ON instance.id = sub_container.instance_id '
+    #                     'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                     'JOIN repository AS repo ON repo.id = ao.repo_id '
+    #                     'JOIN resource ON resource.id = ao.root_record_id '
+    #                     'JOIN enumeration_value AS ev ON ev.id = top_container.type_id '
+    #                     'WHERE top_container.indicator is NULL AND ao.publish is True AND resource.publish is True')
+    # users_statement = ('SELECT name, username, is_system_user AS System_Administrator, is_hidden_user AS Hidden_User '
+    #                    'FROM user')
+    # aomtc_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
+    #                    'COUNT(*) AS Top_Container_Count '
+    #                    'FROM instance '
+    #                    'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                    'JOIN repository ON repository.id = ao.repo_id '
+    #                    'WHERE ao.publish is True AND instance.instance_type_id != 349 '
+    #                    'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
+    # aomdo_statement = ('SELECT repository.name AS Repository, instance.archival_object_id, ao.ref_id, ao.title, '
+    #                    'COUNT(*) AS Digital_Object_Count '
+    #                    'FROM instance '
+    #                    'JOIN archival_object AS ao ON ao.id = instance.archival_object_id '
+    #                    'JOIN repository ON repository.id = ao.repo_id '
+    #                    'WHERE ao.publish is True AND instance.instance_type_id = 349 '
+    #                    'group by instance.archival_object_id HAVING count(archival_object_id) > 1')
+    # aocollevel_statement = ("SELECT repository.name AS Repository, resource.identifier AS Resource_ID, ao.title, "
+    #                         "ao.ref_id, ev.value "
+    #                         "FROM archival_object AS ao "
+    #                         "JOIN resource ON ao.root_record_id = resource.id "
+    #                         "JOIN repository ON ao.repo_id = repository.id "
+    #                         "JOIN enumeration_value AS ev ON ao.level_id = ev.id "
+    #                         "WHERE ao.parent_id is Null "
+    #                         "AND ao.publish = 1 "
+    #                         "AND resource.publish is True "
+    #                         "AND ao.level_id = 889")
+    # eadid_statement = ("SELECT repository.name, resource.title, resource.identifier, resource.ead_id "
+    #                    "FROM resource "
+    #                    "JOIN repository ON repository.id = resource.repo_id "
+    #                    "WHERE resource.ead_id is not NULL AND resource.publish is TRUE")
+    # queries = {"Component Unique Identifiers": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+    #                                              "Component Unique Identifier"], cuid_statement, {"resids": True},
+    #                                             {"booleans": False}],
+    #            "Top Containers - No Barcodes": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+    #                                              "Top Container Indicator", "Container Type"], tcnb_statement,
+    #                                             {"resids": True}, {"booleans": False}],
+    #            "Top Containers - No Indicator": [["Repository", "Resource ID", "RefID", "Archival Object Title",
+    #                                               "Top Container Indicator", "Container Type"], tcnind_statement,
+    #                                              {"resids": True}, {"booleans": False}],
+    #            "Users": [["Name", "Username", "System Administrator?", "Hidden User?"], users_statement,
+    #                      {"resids": False}, {"booleans": True}],
+    #            "Arch Objs-Multiple Top Conts": [["Repository", "Archival Object ID", "RefID",
+    #                                              "Archival Object title", "Top Container Count"],
+    #                                             aomtc_statement, {"resids": False}, {"booleans": False}],
+    #            "Arch Objs-Multiple Dig Objs": [["Repository", "Archival Object ID", "RefID",
+    #                                             "Archival Object Title", "Digital Object Count"],
+    #                                            aomdo_statement, {"resids": False}, {"booleans": False}],
+    #            "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
+    #                                            "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
+    #            "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
+    #                        {"resids": True}, {"booleans": False}]}
+    # for query, info in queries.items():
+    #     run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
+    # duplicate_subjects(workbook)
+    # duplicate_agent_persons(workbook)
+    # # check_res_levels(workbook)
+    source_path = create_export_folder()
+    # export_eads(workbook, source_path, client)
+    check_urls(workbook, source_path)
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
