@@ -309,7 +309,7 @@ def export_eads(wb, source_path, client):
                                                 params={"include_unpublished": False, "include_daos": True,
                                                         "numbered_cs": True, "print_pdf": False, "ead3": False})
                     except Exception as e:
-                        checkexports_sheet.append(repo["name", combined_aspace_id_clean, str(e)])
+                        checkexports_sheet.append([repo["name", combined_aspace_id_clean, str(e)]])
                     else:
                         filepath = str(Path(source_path, combined_aspace_id_clean)) + ".xml"
                         with open(filepath, "wb") as local_file:
@@ -317,7 +317,7 @@ def export_eads(wb, source_path, client):
                             local_file.close()
                             print("Exported: {}".format(combined_id))
             else:
-                checkexports_sheet.append(repo["name"], combined_aspace_id_clean, resource.json())
+                checkexports_sheet.append([repo["name"], combined_aspace_id_clean, resource.json()])
 
 
 def check_urls(wb, source_path):
@@ -340,9 +340,13 @@ def check_urls(wb, source_path):
                 attributes = dict(element.attrib)
                 for key, value in attributes.items():
                     if key == "{http://www.w3.org/1999/xlink}href":
+                        res = bool(re.search(r"\s", value))  # check if there are spaces in the URL
+                        if res:
+                            checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, value,
+                                                   "URL contains spaces, PDF exports will fail"])
                         response = check_url(value)
                         if response:
-                            checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, value, response)
+                            checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, value, response])
             else:
                 element_words = str(element.text).split(" ")
                 filtered_words = list(filter(None, element_words))
@@ -352,21 +356,20 @@ def check_urls(wb, source_path):
                     if match:
                         response = check_url(clean_word)
                         if response:
-                            checkurls_sheet.append(repo, resid, element.getparent().getparent().tag, clean_word,
-                                                   response)
+                            checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, clean_word,
+                                                   response])
 
 
 def check_url(url):
     response_code = None
     try:
         response = requests.get(url, allow_redirects=True)
-        if response.history:
-            for redresp in response.history:
-                print(redresp.status_code, redresp.url)
         if response.status_code != 200:
             response_code = str(response)
+            print(response)
     except Exception as e:
         response_code = str(e)
+        print(e)
     finally:
         return response_code
 
@@ -484,7 +487,7 @@ def run():
     # # check_res_levels(workbook)
     source_path = create_export_folder()
     # export_eads(workbook, source_path, client)
-    # check_urls(workbook, source_path)
+    check_urls(workbook, source_path)
     workbook.remove(workbook["Sheet"])
     workbook.save(spreadsheet)
 
