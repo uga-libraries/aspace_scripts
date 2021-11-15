@@ -284,16 +284,16 @@ def create_export_folder():
         return str(Path(source_path))
 
 
-def export_eads(wb, source_path, client):
+def export_eads(wb, source_path, as_client):
     headers = ["Repository", "Resource ID", "Export Error"]
     checkexports_sheet = write_headers(wb, "Export Errors", headers)
-    repos = client.get("repositories").json()
+    repos = as_client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
         repo_id = repo["uri"].split("/")[2]
-        resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
+        resources = as_client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
         for resource_id in resources:
-            resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
+            resource = as_client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
             combined_id = ""
             for field, value in resource.json().items():
                 id_match = id_field_regex.match(field)
@@ -304,10 +304,10 @@ def export_eads(wb, source_path, client):
             if resource.status_code == 200:
                 if resource.json()["publish"] is True:
                     try:
-                        export_ead = client.get("repositories/{}/resource_descriptions/{}.xml".format(repo_id,
-                                                                                                      resource_id),
-                                                params={"include_unpublished": False, "include_daos": True,
-                                                        "numbered_cs": True, "print_pdf": False, "ead3": False})
+                        export_ead = as_client.get("repositories/{}/resource_descriptions/{}.xml".format(repo_id,
+                                                                                                         resource_id),
+                                                   params={"include_unpublished": False, "include_daos": True,
+                                                           "numbered_cs": True, "print_pdf": False, "ead3": False})
                     except Exception as e:
                         checkexports_sheet.append([repo["name", combined_aspace_id_clean, str(e)]])
                     else:
@@ -341,6 +341,7 @@ def check_urls(wb, source_path):
                 attributes = dict(element.attrib)
                 for key, value in attributes.items():
                     if key == "{http://www.w3.org/1999/xlink}href":
+                        # print(f'Testing URL from href: {value}')
                         res = bool(re.search(r"\s", value))  # check if there are spaces in the URL
                         if res:
                             checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, value,
@@ -355,6 +356,7 @@ def check_urls(wb, source_path):
                     clean_word = word.strip(",.;:`~()<>")
                     match = web_url_regex.match(clean_word)
                     if match:
+                        # print(f'Testing URL from content: {match}')
                         response = check_url(clean_word)
                         if response:
                             checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, clean_word,
@@ -364,7 +366,7 @@ def check_urls(wb, source_path):
 def check_url(url):
     response_code = None
     try:
-        response = requests.get(url, allow_redirects=True)
+        response = requests.get(url, allow_redirects=True, timeout=30)
         if response.status_code != 200:
             response_code = str(response)
             print(response)
@@ -485,7 +487,7 @@ def run():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     duplicate_subjects(workbook)
     duplicate_agent_persons(workbook)
-    # check_res_levels(workbook)
+    check_res_levels(workbook)
     source_path = create_export_folder()
     export_eads(workbook, source_path, client)
     check_urls(workbook, source_path)
