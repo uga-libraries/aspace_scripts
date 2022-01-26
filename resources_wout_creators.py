@@ -8,7 +8,7 @@ id_field_regex = re.compile(r"(^id_+\d)")
 id_combined_regex = re.compile(r'[\W_]+', re.UNICODE)
 
 
-def export_eads(client):
+def check_creators(client):
     repos = client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
@@ -39,4 +39,4 @@ def export_eads(client):
 
 asp_client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 asp_client.authorize()
-export_eads(asp_client)
+check_creators(asp_client)
