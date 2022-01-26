@@ -132,7 +132,7 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
 def check_creators(wb, as_client):
     print("Checking resources without creators...")
     headers = ["Repository", "Resource ID", "Publish?", "Creator"]
-    creator_sheet = write_headers(wb, "Resources w/out Creators", headers)
+    creator_sheet = write_headers(wb, "Resources without Creators", headers)
     repos = as_client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
