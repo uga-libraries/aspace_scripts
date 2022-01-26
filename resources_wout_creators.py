@@ -1,5 +1,6 @@
-# This script exports all published resources for every repository in an ArchivesSpace instance and assigns a
-# concatenated version of the identifier as the filename.
+# This script checks all resources in an ArchivesSpace instance and makes an excel spreadsheet with those without
+# creators
+
 import re
 from secrets import *
 from asnake.client import ASnakeClient

@@ -109,6 +109,7 @@ def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
 
 
 def check_controlled_vocabs(wb, terms, vocab, vocab_num):
+    print("Checking controlled vocabularies...")
     write_row_index = 2
     headers = [str(vocab), "Read Only?", "Suppressed?"]
     vocab_sheet = write_headers(wb, str(vocab), headers)
@@ -126,6 +127,42 @@ def check_controlled_vocabs(wb, terms, vocab, vocab_num):
                                         end_color='FFFF0000',
                                         fill_type='solid')
         write_row_index += 1
+
+
+def check_creators(wb, as_client):
+    print("Checking resources without creators...")
+    headers = ["Repository", "Resource ID", "Publish?", "Creator"]
+    creator_sheet = write_headers(wb, "Resources w/out Creators", headers)
+    repos = as_client.get("repositories").json()
+    for repo in repos:
+        print(repo["name"] + "\n")
+        repo_id = repo["uri"].split("/")[2]
+        resources = as_client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
+        for resource_id in resources:
+            has_creator = False
+            resource = as_client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
+            combined_id = ""
+            for field, value in resource.json().items():
+                id_match = id_field_regex.match(field)
+                if id_match:
+                    combined_id += value + "-"
+            combined_id = combined_id[:-1]
+            if resource.json()["publish"] is True:
+                if resource.status_code == 200:
+                    if "linked_agents" in resource.json():
+                        linked_agents = resource.json()["linked_agents"]
+                        for linked_agent in linked_agents:
+                            if linked_agent["role"] == "creator":
+                                has_creator = True
+                        if has_creator is False:
+                            creator_sheet.append([repo["name"], combined_id, resource.json()["publish"], "None"])
+                            print(f'Repo: {repo["name"]}, Resource: {combined_id}, '
+                                  f'Publish?: {resource.json()["publish"]}')
+                    else:
+                        creator_sheet.append([repo["name"], combined_id, resource.json()["publish"], "None"])
+                        print(f'Repo: {repo["name"]}, Resource: {combined_id}, '
+                              f'Publish?: {resource.json()["publish"]}')
+        print("_" * 100)
 
 
 def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
@@ -173,6 +210,7 @@ def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, as_clien
 
 
 def check_res_levels(wb):
+    print("Checking children levels...")
     headers = ["Repository", "Resource ID", "Parent Title", "Parent URI", "Level Disparity"]
     reslevel_sheet = write_headers(wb, "Collection Level Checks", headers)
     repos = client.get("repositories").json()
@@ -209,12 +247,14 @@ def check_res_levels(wb):
 
 
 def duplicate_subjects(wb):
+    print("Checking for duplicate subjects...")
     headers = ["Original Subject", "Original Subject ID", "Duplicate Subject", "Duplicate Subject ID"]
     statement = f'SELECT title, id FROM subject'
     check_duplicates(wb, headers, statement, "Duplicate Subjects", "/subjects/")
 
 
 def duplicate_agent_persons(wb):
+    print("Checking for duplicate agents...")
     headers = ["Original Agent", "Original Agent ID", "Duplicate Agent", "Duplicate Agent ID"]
     statement = f'SELECT sort_name, agent_person_id FROM name_person'
     check_duplicates(wb, headers, statement, "Duplicate Agents", "/agents/people/")
@@ -266,6 +306,7 @@ def create_export_folder():
 
 
 def export_eads(wb, source_path, as_client):
+    print("Checking for EAD export errors...")
     headers = ["Repository", "Resource ID", "Export Error"]
     checkexports_sheet = write_headers(wb, "Export Errors", headers)
     repos = as_client.get("repositories").json()
@@ -302,6 +343,7 @@ def export_eads(wb, source_path, as_client):
 
 
 def check_urls(wb, source_path):
+    print("Checking for URL erros...")
     headers = ["Repository", "Resource ID", "Parent Title", "URL", "URL Error Code"]
     checkurls_sheet = write_headers(wb, "URL Errors", headers)
     repo = None
@@ -468,15 +510,16 @@ def run():
         run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
     duplicate_subjects(workbook)
     duplicate_agent_persons(workbook)
+    check_creators(workbook, client)
     check_res_levels(workbook)
     source_path = create_export_folder()
     export_eads(workbook, source_path, client)
     check_urls(workbook, source_path)
     workbook.remove(workbook["Sheet"])
-    # try:
-    #     workbook.remove(workbook["Sheet1"])
-    # except Exception as e:
-    #     print(e)
+    try:
+        workbook.remove(workbook["Sheet1"])
+    except Exception as e:
+        print(e)
     workbook.save(spreadsheet)
 
 
