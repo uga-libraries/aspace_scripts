@@ -11,7 +11,7 @@ client.authorize()
 ao_workbook = load_workbook(Path.joinpath(Path.cwd(), "data", "MS3000_2fURI.xlsx"))
 ao_sheet = ao_workbook["ms3000_2e_AOs"]
 aobjects = []
-for row in ao_sheet.iter_rows(min_col=1, min_row=3, values_only=True):
+for row in ao_sheet.iter_rows(min_col=1, min_row=2, values_only=True):
     arch_obj, target_res = row[0], row[1]
     transfer_ao = client.post("repositories/4/component_transfers",
                               params={"target_resource": target_res,
