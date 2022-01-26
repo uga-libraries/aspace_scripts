@@ -90,7 +90,7 @@ workbook, spreadsheet = generate_spreadsheet(data_spreadsheet)
 headers = ["Title", "URI"]
 ms3000_sheet = write_headers(workbook, "ms3000_2e_AOs", headers)
 
-aspace_request = f'/repositories/4/resources/4306/tree'
+aspace_request = f'/repositories/4/resources/4306/tree/root'
 ms3000_json = make_request_using_cache(aspace_request)
 
 for child in ms3000_json["children"]:
