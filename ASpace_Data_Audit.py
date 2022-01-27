@@ -505,9 +505,11 @@ def run():
                "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
                                                "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
                "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
-                           {"resids": True}, {"booleans": False}]}
+                           {"resids": True}, {"booleans": False}],
+               }
     for query, info in queries.items():
-        run_query(workbook, query, info[0], info[1], resid=info[2]["resids"], booleans=info[3]["booleans"])
+        headers, sql_statement, resids, bools = info[0], info[1], info[2]["resids"], info[3]["booleans"]
+        run_query(workbook, query, headers, sql_statement, resid=resids, booleans=bools)
     duplicate_subjects(workbook)
     duplicate_agent_persons(workbook)
     check_creators(workbook, client)
