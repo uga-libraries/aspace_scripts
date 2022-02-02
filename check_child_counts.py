@@ -1,3 +1,6 @@
+# This script checks how many children a parent object has in ArchivesSpace and if the number of children is equal to
+# or greater than 1000, logs them in a .csv file
+
 import re
 import json
 import csv

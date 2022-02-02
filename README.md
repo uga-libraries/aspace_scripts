@@ -3,17 +3,20 @@
 ## api_test_project_template.py
 This script is a template for making scripts working with the ArchivesSpace API, particularly working with the ArchivesSnake library: https://github.com/archivesspace-labs/ArchivesSnake
 
-## ASpace_Data_Audit.py
-A series of SQL queries, API calls, and exports to generate a spreadsheet for data cleanup.
-
 ## as_functions.py
 A test script with different functions testing how to start up a series of background import jobs and monitor their progress
+
+## ASpace_Data_Audit.py
+A series of SQL queries, API calls, and exports to generate a spreadsheet for data cleanup.
 
 ## aspace_migration.py
 This script runs a gamut of different cleanup functions against ArchivesSpace after UGA's migration from Archivists' Toolkit
 
 ## check_aspace_aos.py
 This script checks all archival objects in ArchivesSpace and checks to see what objects are listed as collections, as well as updating ms3789 to change its objects from 'collection' to 'file'
+
+## check_child_counts.py
+This script checks how many children a parent object has in ArchivesSpace and if the number of children is equal to or greater than 1000, logs them in a .csv file
 
 ## check_enumerations.py
 This script checks a standard list of controlled vocabularly lists and updates ArchivesSpace by deleting or merging values
@@ -54,6 +57,9 @@ This script publishes all digital object file versions
 ## publish_dos.py
 This script publishes all digital objects
 
+## resources_wout_creators.py
+This script checks all resources in an ArchivesSpace instance and makes an excel spreadsheet with those without creators
+
 ## russell_av_containers.sql
 This grabs all top containers with instance types that are either "moving_images" or "audio" for the Russell repository
 
@@ -74,6 +80,9 @@ This script takes info from the Dates of Existence and puts them in the Dates fi
 
 ## update_containers.py
 This script updates ArchivesSpace containers from a spreadsheet
+
+## update_ms30002f.py
+This script transfers a series of archival objects from ms3000_2e to ms3000_2f at the top level
 
 ## update_subjects_agents.py
 This scirpt deletes and merges subjects from a spreadsheet

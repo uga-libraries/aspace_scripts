@@ -4,7 +4,7 @@ import csv
 import mysql.connector
 import pathlib
 from openpyxl import load_workbook
-from secrets import sql_host, sql_user, sql_passwd
+from secrets import as_dbstag_host, as_dbstag_un, as_dbstag_pw
 
 subjects = load_workbook(pathlib.Path.joinpath(pathlib.Path.cwd(), "reports", "subjects_agents-notes.xlsx"))
 subjects_to_agents = subjects["Subjects to agents"]
@@ -13,7 +13,7 @@ for row in subjects_to_agents.iter_rows(min_col=2, values_only=True):
     for cell in row:
         subject_ids.append(cell.split("/")[-1])
 
-uga_aspace_staging = mysql.connector.connect(host=sql_host, user=sql_user, password=sql_passwd,
+uga_aspace_staging = mysql.connector.connect(host=as_dbstag_host, user=as_dbstag_un, password=as_dbstag_pw,
                                              database="archivesspace")
 astag_cursor = uga_aspace_staging.cursor(buffered=True)
 

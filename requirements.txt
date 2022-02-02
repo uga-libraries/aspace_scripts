@@ -1,0 +1,10 @@
+ArchivesSnake~=0.9.1
+lxml~=4.7.1
+openpyxl~=3.0.9
+requests~=2.27.1
+PySimpleGUI~=4.56.0
+
+pandas~=1.4.0
+mysql~=0.0.3
+mysqlclient~=2.1.0
+mysql-connector-python~=8.0.28
