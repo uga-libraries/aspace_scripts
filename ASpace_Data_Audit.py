@@ -2,6 +2,7 @@ import mysql.connector as mysql
 import os
 import re
 import requests
+import smtplib
 from asnake.client import ASnakeClient
 from lxml import etree
 from mysql.connector import errorcode
@@ -9,14 +10,21 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from pathlib import Path
 from secrets import *
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email.utils import formatdate
+from email import encoders
 
 id_field_regex = re.compile(r"(^id_+\d)")
 id_combined_regex = re.compile(r'[\W_]+', re.UNICODE)
 web_url_regex = re.compile(r"""(?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]+[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)/)(?:[^\s()<>{}\[\]]+|\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\))+(?:\([^\s()]*?\([^\s()]+\)[^\s()]*?\)|\([^\s]+?\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’])|(?:(?<!@)[a-z0-9]+(?:[.\-][a-z0-9]+)*[.](?:com|net|org|edu|gov|mil|aero|asia|biz|cat|coop|info|int|jobs|mobi|museum|name|post|pro|tel|travel|xxx|ac|ad|ae|af|ag|ai|al|am|an|ao|aq|ar|as|at|au|aw|ax|az|ba|bb|bd|be|bf|bg|bh|bi|bj|bm|bn|bo|br|bs|bt|bv|bw|by|bz|ca|cc|cd|cf|cg|ch|ci|ck|cl|cm|cn|co|cr|cs|cu|cv|cx|cy|cz|dd|de|dj|dk|dm|do|dz|ec|ee|eg|eh|er|es|et|eu|fi|fj|fk|fm|fo|fr|ga|gb|gd|ge|gf|gg|gh|gi|gl|gm|gn|gp|gq|gr|gs|gt|gu|gw|gy|hk|hm|hn|hr|ht|hu|id|ie|il|im|in|io|iq|ir|is|it|je|jm|jo|jp|ke|kg|kh|ki|km|kn|kp|kr|kw|ky|kz|la|lb|lc|li|lk|lr|ls|lt|lu|lv|ly|ma|mc|md|me|mg|mh|mk|ml|mm|mn|mo|mp|mq|mr|ms|mt|mu|mv|mw|mx|my|mz|na|nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|ps|pt|pw|py|qa|re|ro|rs|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|Ja|sk|sl|sm|sn|so|sr|ss|st|su|sv|sx|sy|sz|tc|td|tf|tg|th|tj|tk|tl|tm|tn|to|tp|tr|tt|tv|tw|tz|ua|ug|uk|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)\b/?(?!@)))""")
 
 
-client: ASnakeClient = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
-client.authorize()
+def connect_aspace_api():
+    client: ASnakeClient = ASnakeClient(baseurl=as_api_stag, username=as_auditor_un, password=as_auditor_pw)
+    client.authorize()
+    return client
 
 
 def connect_db():
@@ -37,6 +45,57 @@ def connect_db():
         print(staging_connect)
         staging_cursor = staging_connect.cursor()
         return staging_connect, staging_cursor
+
+
+def email_users(send_from, send_to, subject, message, files=None, server="localhost", port=587, username='',
+                password='', use_tls=True):
+    """Compose and send email with provided info and attachments.
+
+    Args:
+        send_from (str): from name
+        send_to (list[str]): to name(s)
+        subject (str): message title
+        message (str): message body
+        files (list[str]): list of file paths to be attached to email
+        server (str): mail server host name
+        port (int): port number
+        username (str): server auth username
+        password (str): server auth password
+        use_tls (bool): use TLS mode
+    """
+    if files is None:
+        files = []
+    send_to_str = ""
+    for person in send_to:
+        send_to_str += person + ", "
+    msg = MIMEMultipart()
+    msg['From'] = send_from
+    msg['To'] = send_to_str[:-2]  # COMMASPACE.join(send_to)
+    msg['Date'] = formatdate(localtime=True)
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(message))
+
+    for path in files:
+        part = MIMEBase('application', "octet-stream")
+    with open(path, 'rb') as file:
+        part.set_payload(file.read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition',
+                    'attachment; filename={}'.format(Path(path).name))
+    msg.attach(part)
+
+    smtp = smtplib.SMTP(server, port)
+    if use_tls:
+        smtp.starttls()
+    smtp.login(username, password)
+    smtp.sendmail(send_from, send_to, msg.as_string())
+    smtp.quit()
+
+
+message_sample = f'This is a test to see if this python script sends an email.\nThis is only a test.'
+email_users(cs_email, [cs_email], "test_email", message_sample,
+            files=[str(Path.joinpath(Path.cwd(), "data/data_audit-03-12-2021.xlsx"))], server="")
 
 
 def query_database(connection, cursor, statement):
@@ -165,7 +224,7 @@ def check_creators(wb, as_client):
         print("_" * 100)
 
 
-def check_child_levels(top_child_uri, root_uri, top_level, top_child_title):
+def check_child_levels(client, top_child_uri, root_uri, top_level, top_child_title):
     levels = []
     if top_level is True:
         tl_tree = client.get(f'{top_child_uri}/tree/root').json()
@@ -209,7 +268,7 @@ def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, as_clien
     return child_levels
 
 
-def check_res_levels(wb):
+def check_res_levels(wb, client):
     print("Checking children levels...")
     headers = ["Repository", "Resource ID", "Parent Title", "Parent URI", "Level Disparity"]
     reslevel_sheet = write_headers(wb, "Collection Level Checks", headers)
@@ -234,14 +293,14 @@ def check_res_levels(wb):
                     child_levels = get_top_children(tree_info, child_levels, root_uri, combined_id, client,
                                                     top_level=True)
                     for top_child_uri, top_child_info in child_levels.items():
-                        top_child_uri, top_child_title, level_disparity = check_child_levels(top_child_uri,
+                        top_child_uri, top_child_title, level_disparity = check_child_levels(client, top_child_uri,
                                                                                              root_uri,
                                                                                              top_child_info[4],
                                                                                              top_child_info[0]) or \
                                                                           (None, None, None)
                         if level_disparity is not None:
                             reslevel_sheet.append([repo["name"], combined_id, top_child_title, top_child_uri,
-                                                  str(level_disparity)])
+                                                   str(level_disparity)])
                             print(f'Repo: {repo["name"]}, Resource: {combined_id}, Parent Title: {top_child_title}, '
                                   f'Parent URI: {top_child_uri}, Level Disparity: {level_disparity}')
 
@@ -368,7 +427,7 @@ def check_urls(wb, source_path):
                         res = bool(re.search(r"\s", value))  # check if there are spaces in the URL
                         if res:
                             checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, value,
-                                                   "URL contains spaces, PDF exports will fail"])
+                                                    "URL contains spaces, PDF exports will fail"])
                         response = check_url(value)
                         if response:
                             checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, value, response])
@@ -383,7 +442,7 @@ def check_urls(wb, source_path):
                         response = check_url(clean_word)
                         if response:
                             checkurls_sheet.append([repo, resid, element.getparent().getparent().tag, clean_word,
-                                                   response])
+                                                    response])
 
 
 def check_url(url):
@@ -402,6 +461,7 @@ def check_url(url):
 
 def run():
     workbook, spreadsheet = generate_spreadsheet()
+    aspace_client = connect_aspace_api()
     controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
                                                 "occupation", "style_period", "technique", "temporal", "topical",
                                                 "uniform_title"], 54],
@@ -512,10 +572,10 @@ def run():
         run_query(workbook, query, headers, sql_statement, resid=resids, booleans=bools)
     duplicate_subjects(workbook)
     duplicate_agent_persons(workbook)
-    check_creators(workbook, client)
-    check_res_levels(workbook)
+    check_creators(workbook, aspace_client)
+    check_res_levels(workbook, aspace_client)
     source_path = create_export_folder()
-    export_eads(workbook, source_path, client)
+    export_eads(workbook, source_path, aspace_client)
     check_urls(workbook, source_path)
     workbook.remove(workbook["Sheet"])
     try:
@@ -525,4 +585,4 @@ def run():
     workbook.save(spreadsheet)
 
 
-run()
+# run()
