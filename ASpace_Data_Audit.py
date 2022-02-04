@@ -3,18 +3,20 @@ import os
 import re
 import requests
 import smtplib
+
 from asnake.client import ASnakeClient
+from datetime import date
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email.utils import formatdate
+from email import encoders
 from lxml import etree
 from mysql.connector import errorcode
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from pathlib import Path
 from secrets import *
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email.mime.text import MIMEText
-from email.utils import formatdate
-from email import encoders
 
 id_field_regex = re.compile(r"(^id_+\d)")
 id_combined_regex = re.compile(r'[\W_]+', re.UNICODE)
@@ -22,12 +24,25 @@ web_url_regex = re.compile(r"""(?i)\b((?:https?:(?:/{1,3}|[a-z0-9%])|[a-z0-9.\-]
 
 
 def connect_aspace_api():
-    client: ASnakeClient = ASnakeClient(baseurl=as_api_stag, username=as_auditor_un, password=as_auditor_pw)
+    """
+    Connects to the ArchivesSpace staging API
+
+    Returns:
+         client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+    """
+    client: ASnakeClient = ASnakeClient(baseurl=as_api, username=as_auditor_un, password=as_auditor_pw)
     client.authorize()
     return client
 
 
 def connect_db():
+    """
+    Connects to the ArchivesSpace staging database with credentials provided in local secrets.py file
+
+    Returns:
+         staging_connect: The connection to the staging database
+         staging_cursor: The cursor of results for the staging database
+    """
     try:
         staging_connect = mysql.connect(user=as_dbstag_un,
                                         password=as_dbstag_pw,
@@ -42,7 +57,6 @@ def connect_db():
         else:
             print(error)
     else:
-        print(staging_connect)
         staging_cursor = staging_connect.cursor()
         return staging_connect, staging_cursor
 
@@ -93,12 +107,24 @@ def email_users(send_from, send_to, subject, message, files=None, server="localh
     smtp.quit()
 
 
-message_sample = f'This is a test to see if this python script sends an email.\nThis is only a test.'
-email_users(cs_email, [cs_email], "test_email", message_sample,
-            files=[str(Path.joinpath(Path.cwd(), "data/data_audit-03-12-2021.xlsx"))], server="")
+# message_sample = f'This is a test to see if this python script sends an email.\nThis is only a test.'
+# email_users(cs_email, [cs_email], "test_email", message_sample,
+#             files=[str(Path.joinpath(Path.cwd(), "data/data_audit_2022-02-04.xlsx"))], server="")
 
 
 def query_database(connection, cursor, statement):
+    """
+    Runs a query on the database
+
+    Args:
+        connection: The MySQL connection to the database
+        cursor: Allows us to iterate a set of rows returned by a query.
+                Source: https://www.mysqltutorial.org/mysql-cursor/
+        statement (str): The MySQL statement to run against the database
+
+    Returns:
+        worksheet (openpysl.worksheet): An openpyxl worksheet class
+    """
     cursor.execute(statement)
     results = cursor.fetchall()
     cursor.close()
@@ -107,13 +133,31 @@ def query_database(connection, cursor, statement):
 
 
 def generate_spreadsheet():
+    """
+    Creates a new spreadsheet for the data audit output, distinguished by date appended to end of filename
+
+    Returns:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        data_worksheet (str): The filepath of the data audit worksheet
+    """
     wb = Workbook()
-    data_spreadsheet = 'reports/data_audit.xlsx'
+    data_spreadsheet = f'reports/data_audit_{str(date.today())}.xlsx'
     wb.save(data_spreadsheet)
     return wb, data_spreadsheet
 
 
 def write_headers(wb, sheetname, headers):
+    """
+    Takes a list of strings and writes them to the top row for a sheet in the data audit spreadsheet
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        sheetname (str): The name of sheet to be added to the data audit spreadsheet
+        headers (list): List of strings to be headers on the top row of the sheet
+
+    Returns:
+        worksheet (openpysl.worksheet): An openpyxl worksheet class
+    """
     worksheet = wb.create_sheet(sheetname)
     worksheet.title = sheetname
     header_index = 0
@@ -126,7 +170,16 @@ def write_headers(wb, sheetname, headers):
 
 
 def standardize_resids(results):
-    redone_results = []
+    """
+    Takes the results of a MySQL statement and changes the resource identifier to be more readable
+
+    Args:
+        results (list): The results returned from a MySQL query
+
+    Returns:
+        updated_results (list): Updated results list containing more readable resource identifiers
+    """
+    updated_results = []
     for result in list(results):
         new_result = list(result)
         res_id_list = new_result[1].strip('[').strip(']').replace('"', '').split(',')
@@ -135,12 +188,21 @@ def standardize_resids(results):
             if id_comp != 'null':
                 combined_id += id_comp + '-'
         new_result[1] = combined_id[:-1]
-        redone_results.append(new_result)
-    return redone_results
+        updated_results.append(new_result)
+    return updated_results
 
 
 def update_booleans(results):
-    checked_results = []
+    """
+    Takes the results of a MySQL statement and changes any 0 and 1 values to False and True, respectively
+
+    Args:
+        results (list): The results returned from a MySQL query
+
+    Returns:
+        checked_results (list): Updated results list containing True, False in place of 0s, 1s
+    """
+    updated_results = []
     for result in list(results):
         single_row = list(result)
         list_index = 0
@@ -150,11 +212,28 @@ def update_booleans(results):
             elif value == 1:
                 single_row[list_index] = True
             list_index += 1
-        checked_results.append(single_row)
-    return checked_results
+        updated_results.append(single_row)
+    return updated_results
 
 
 def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
+    """
+    Takes a MySQL statement to run against the ArchivesSpace database
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        sheetname (str): The name of sheet to be added to the data audit spreadsheet
+        headers (list): List of strings to be headers on the top row of the sheet
+        statement (str): The MySQL statement to run against the ArchivesSpace database
+        resid (bool): If a resource identifier is included in the results of the MySQL statement, run the
+                                identifier through standardize_resids()
+        booleans (bool): If booleans are included in the results of the MySQL statement, run the
+                                   them through update_booleans() to change them from numbers to TRUE or FALSE
+
+    Returns:
+        None
+    """
+    print(f'Checking {sheetname}... ', flush=True, end='')
     worksheet = write_headers(wb, sheetname, headers)
     connection, cursor = connect_db()
     results = query_database(connection, cursor, statement)
@@ -165,30 +244,57 @@ def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
         standardized_results = update_booleans(standardized_results)
     for result in standardized_results:
         worksheet.append(result)
+    print("Done")
 
 
-def check_controlled_vocabs(wb, terms, vocab, vocab_num):
-    print("Checking controlled vocabularies...")
+def check_controlled_vocabs(wb, vocab, terms, terms_num):
+    """
+    Takes a standard list of controlled vocabulary terms and checks an ArchivesSpace instance for any that do not match
+    and highlights them in the data audit spreadsheet
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        vocab (str): The controlled vocabulary (extent types, instance types, etc.) to be checked. Also serves as the
+                     name of sheet to be added to the data audit spreadsheet
+        terms (list): The standard list of terms to check against the terms found in ArchivesSpace
+        terms_num (int): The enumeration identifier for a controlled vocabulary in the ArchivesSpace database
+
+    Returns:
+        None
+    """
+    print(f'\nChecking controlled vocabularies: {vocab}... ')
     write_row_index = 2
     headers = [str(vocab), "Read Only?", "Suppressed?"]
     vocab_sheet = write_headers(wb, str(vocab), headers)
     statement = (f'SELECT CONVERT(ev.value using utf8) AS {vocab}, ev.readonly AS Read_Only, '
                  f'ev.suppressed AS Suppressed '
                  f'FROM enumeration_value AS ev '
-                 f'WHERE enumeration_id = {vocab_num}')
+                 f'WHERE enumeration_id = {terms_num}')
     connection, cursor = connect_db()
     standardize_results = update_booleans(query_database(connection, cursor, statement))
     for result in standardize_results:
         vocab_sheet.append(result)
         if result[0] not in terms:
+            print(f'Term not in standard list: {result[0]}')
             for cell in vocab_sheet[f'{write_row_index}:{write_row_index}']:
                 cell.fill = PatternFill(start_color='FFFF0000',
                                         end_color='FFFF0000',
                                         fill_type='solid')
         write_row_index += 1
+    print("Done")
 
 
 def check_creators(wb, as_client):
+    """
+    Iterates through all published resources in an ArchivesSpace instance and checks to see if it has a creator agent
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        as_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+
+    Returns:
+        None
+    """
     print("Checking resources without creators...")
     headers = ["Repository", "Resource ID", "Publish?", "Creator"]
     creator_sheet = write_headers(wb, "Resources without Creators", headers)
@@ -224,18 +330,34 @@ def check_creators(wb, as_client):
         print("_" * 100)
 
 
-def check_child_levels(client, top_child_uri, root_uri, top_level, top_child_title):
+def check_child_levels(top_child_uri, root_uri, top_level, top_child_title, as_client):
+    """
+    Iterates through an archival object's published children and returns the top child (parent) URI, title, and the
+    levels of the children of the parent archival object
+
+    Args:
+        top_child_uri (str): The URI string of the parent archival object
+        root_uri (str): The root URI for the archival object being iterated through
+        top_level (bool): If the archival object is on the top level of a resource (c01)
+        top_child_title (str): The title of the parent archival object
+        as_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+
+    Returns:
+        top_child_uri (str): The URI string of the parent archival object
+        top_child_title (str): The title of the parent archival object
+        levels (list): A list of all levels of the children of the parent archival object
+    """
     levels = []
     if top_level is True:
-        tl_tree = client.get(f'{top_child_uri}/tree/root').json()
+        tl_tree = as_client.get(f'{top_child_uri}/tree/root').json()
         for waypoint_num, waypoint_info in tl_tree["precomputed_waypoints"][''].items():
             for child in waypoint_info:
-                child_info = client.get(f'{child["uri"]}').json()
+                child_info = as_client.get(f'{child["uri"]}').json()
                 if child["level"] not in levels and child_info["publish"] is True:
                     levels.append(child["level"])
     else:
-        children = client.get(root_uri + "/tree/node", params={"node_uri": top_child_uri,
-                                                               "published_only": True}).json()
+        children = as_client.get(root_uri + "/tree/node", params={"node_uri": top_child_uri,
+                                                                  "published_only": True}).json()
         if children["child_count"] != 0:
             for waypoint_num, waypoint_info in children["precomputed_waypoints"][children["uri"]].items():
                 for child in waypoint_info:
@@ -248,6 +370,21 @@ def check_child_levels(client, top_child_uri, root_uri, top_level, top_child_tit
 
 
 def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, as_client, top_level=False):
+    """
+    Iterates through a resource's published archival objects in ArchivesSpace and returns all published archival
+    objects that have children
+
+    Args:
+        tree_info (dict): The archival object tree for a resource
+        child_levels (dict): The archival objects with children for a resource
+        root_uri (str): The root URI for the child being iterated through
+        aspace_coll_id (str): The identifier for the resource of the archival objects being iterated through
+        as_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+        top_level (bool): If the archival object is on the top level of a resource (c01)
+
+    Returns:
+        child_levels (dict): The archival objects on the same level of each other within a resource
+    """
     if tree_info["child_count"] > 0 and tree_info["uri"] not in child_levels:
         child_levels[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
                                                aspace_coll_id, top_level)
@@ -268,18 +405,33 @@ def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, as_clien
     return child_levels
 
 
-def check_res_levels(wb, client):
+def check_res_levels(wb, as_client):
+    """
+    Iterates through all published resources in ArchivesSpace instance and checks to see if archival objects on the top
+    level are labeled with different levels; ex. file and series on c01, item, file, and subseries on c01
+
+    Used for consistent display on SCLFind website for finding aids. Having an archival object labeled 'file' on the
+    same level as an archival object labeled 'series' looks weird and is not consistent. We want archival objects on the
+    same level to have consistent labels (with the exception of file and item as they are very similar).
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        as_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+
+    Returns:
+        None
+    """
     print("Checking children levels...")
     headers = ["Repository", "Resource ID", "Parent Title", "Parent URI", "Level Disparity"]
     reslevel_sheet = write_headers(wb, "Collection Level Checks", headers)
-    repos = client.get("repositories").json()
+    repos = as_client.get("repositories").json()
     for repo in repos:
         print(repo["name"] + "\n")
         repo_id = repo["uri"].split("/")[2]
-        resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
+        resources = as_client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
         for resource_id in resources:
             child_levels = {}
-            resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
+            resource = as_client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
             combined_id = ""
             for field, value in resource.json().items():
                 id_match = id_field_regex.match(field)
@@ -289,14 +441,14 @@ def check_res_levels(wb, client):
             if resource.json()["publish"] is True:
                 if resource.status_code == 200:
                     root_uri = f'/repositories/{repo_id}/resources/{resource_id}'
-                    tree_info = client.get(f'{root_uri}/tree/root').json()
-                    child_levels = get_top_children(tree_info, child_levels, root_uri, combined_id, client,
+                    tree_info = as_client.get(f'{root_uri}/tree/root').json()
+                    child_levels = get_top_children(tree_info, child_levels, root_uri, combined_id, as_client,
                                                     top_level=True)
                     for top_child_uri, top_child_info in child_levels.items():
-                        top_child_uri, top_child_title, level_disparity = check_child_levels(client, top_child_uri,
-                                                                                             root_uri,
+                        top_child_uri, top_child_title, level_disparity = check_child_levels(top_child_uri, root_uri,
                                                                                              top_child_info[4],
-                                                                                             top_child_info[0]) or \
+                                                                                             top_child_info[0],
+                                                                                             as_client) or \
                                                                           (None, None, None)
                         if level_disparity is not None:
                             reslevel_sheet.append([repo["name"], combined_id, top_child_title, top_child_uri,
@@ -306,20 +458,53 @@ def check_res_levels(wb, client):
 
 
 def duplicate_subjects(wb):
-    print("Checking for duplicate subjects...")
+    """
+    Checks for duplicate subjects in ArchivesSpace
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+
+    Returns:
+        None
+    """
+    print("Checking for duplicate subjects...", flush=True, end='')
     headers = ["Original Subject", "Original Subject ID", "Duplicate Subject", "Duplicate Subject ID"]
     statement = f'SELECT title, id FROM subject'
     check_duplicates(wb, headers, statement, "Duplicate Subjects", "/subjects/")
+    print("Done")
 
 
 def duplicate_agent_persons(wb):
-    print("Checking for duplicate agents...")
+    """
+    Checks for duplicate agent persons in ArchivesSpace
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+
+    Returns:
+        None
+    """
+    print("Checking for duplicate agents...", flush=True, end='')
     headers = ["Original Agent", "Original Agent ID", "Duplicate Agent", "Duplicate Agent ID"]
     statement = f'SELECT sort_name, agent_person_id FROM name_person'
     check_duplicates(wb, headers, statement, "Duplicate Agents", "/agents/people/")
+    print("Done")
 
 
 def check_duplicates(wb, headers, statement, sheetname, uri_string):
+    """
+    Takes an SQL query and checks for duplicate results from the query
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        headers (list): List of strings to be headers on the top row of the sheet
+        statement (str): MySQL statement to be executed
+        sheetname (str): The name of the sheet to be added to the data audit spreadsheet
+        uri_string (str): Part of the URI of the duplicates found in ArchivesSpace, ex. '/agents/people' or '/subjects/'
+
+    Returns:
+        None
+    """
     write_row_index = 2
     vocab_sheet = write_headers(wb, sheetname, headers)
     connection, cursor = connect_db()
@@ -347,6 +532,9 @@ def check_duplicates(wb, headers, statement, sheetname, uri_string):
 
 
 def create_export_folder():
+    """
+    Creates a directory at the same level of the script (source_eads) for storing all exported EAD.xml files
+    """
     try:
         current_directory = os.getcwd()
         for root, directories, files in os.walk(current_directory):
@@ -365,6 +553,24 @@ def create_export_folder():
 
 
 def export_eads(wb, source_path, as_client):
+    """
+    Calls the ArchivesSpace API to export all published resources as EAD.xml files with the following parameters:
+        "include_unpublished": False,
+        "include_daos": True,
+        "numbered_cs": True,
+        "print_pdf": False,
+        "ead3": False
+
+    Creates a directory at the same level of the script (source_eads) for storing all the EAD.xml files
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        source_path (str): The filepath of the file being checked for URLs
+        as_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+
+    Returns:
+        None
+    """
     print("Checking for EAD export errors...")
     headers = ["Repository", "Resource ID", "Export Error"]
     checkexports_sheet = write_headers(wb, "Export Errors", headers)
@@ -402,6 +608,16 @@ def export_eads(wb, source_path, as_client):
 
 
 def check_urls(wb, source_path):
+    """
+    Iterates through an .xml file checking for URLs using regex
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        source_path (str): The filepath of the file being checked for URLs
+
+    Returns:
+        None
+    """
     print("Checking for URL erros...")
     headers = ["Repository", "Resource ID", "Parent Title", "URL", "URL Error Code"]
     checkurls_sheet = write_headers(wb, "URL Errors", headers)
@@ -446,6 +662,15 @@ def check_urls(wb, source_path):
 
 
 def check_url(url):
+    """
+    Takes a string input as a URL and checks the response code
+
+    Args:
+        url (str): The URL string to test the response
+
+    Returns:
+        response_code (int): The response code from requesting the URL
+    """
     response_code = None
     try:
         response = requests.get(url, allow_redirects=True, timeout=30)
@@ -460,6 +685,10 @@ def check_url(url):
 
 
 def run():
+    """
+    Calls a series of functions to run data audits on UGA's ArchivesSpace staging data with the API and MySQL database.
+    It generates an excel spreadsheet found in the reports directory
+    """
     workbook, spreadsheet = generate_spreadsheet()
     aspace_client = connect_aspace_api()
     controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
@@ -481,8 +710,6 @@ def run():
                                               "portfolio", "item", "volume", "physdesc", "electronic_records", "carton",
                                               "drawer", "cassette", "rr", "cs"], 16],
                          "Accession_Resource_Types": [["collection", "papers", "records"], 7]}
-    for term, info in controlled_vocabs.items():
-        check_controlled_vocabs(workbook, info[0], term, info[1])
     cuid_statement = ('SELECT repo.name AS Repository, resource.identifier AS Resource_ID, ao.ref_id AS Ref_ID, '
                       'ao.title AS Archival_Object_Title, ao.component_id AS Component_Unique_Identifier '
                       'FROM archival_object AS ao '
@@ -565,11 +792,15 @@ def run():
                "Arch Objs-Collection Level": [["Repository", "Resource ID", "Archival Object Title", "RefID",
                                                "Level"], aocollevel_statement, {"resids": True}, {"booleans": False}],
                "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
-                           {"resids": True}, {"booleans": False}],
-               }
+                           {"resids": True}, {"booleans": False}]}
+
+    for term, info in controlled_vocabs.items():
+        check_controlled_vocabs(workbook, term, info[0], info[1])
+
     for query, info in queries.items():
         headers, sql_statement, resids, bools = info[0], info[1], info[2]["resids"], info[3]["booleans"]
         run_query(workbook, query, headers, sql_statement, resid=resids, booleans=bools)
+
     duplicate_subjects(workbook)
     duplicate_agent_persons(workbook)
     check_creators(workbook, aspace_client)
@@ -578,11 +809,13 @@ def run():
     export_eads(workbook, source_path, aspace_client)
     check_urls(workbook, source_path)
     workbook.remove(workbook["Sheet"])
+
     try:
         workbook.remove(workbook["Sheet1"])
     except Exception as e:
         print(e)
+
     workbook.save(spreadsheet)
 
 
-# run()
+run()
