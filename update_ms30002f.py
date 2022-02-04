@@ -5,7 +5,7 @@ from asnake.client import ASnakeClient
 from openpyxl import load_workbook
 from pathlib import Path
 
-client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
+client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 
 ao_workbook = load_workbook(Path.joinpath(Path.cwd(), "data", "MS3000_2fURI.xlsx"))
