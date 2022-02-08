@@ -141,7 +141,7 @@ def generate_spreadsheet():
         data_worksheet (str): The filepath of the data audit worksheet
     """
     wb = Workbook()
-    data_spreadsheet = f'reports/data_audit_{str(date.today())}.xlsx'
+    data_spreadsheet = f'data_audit_{str(date.today())}.xlsx'
     wb.save(data_spreadsheet)
     return wb, data_spreadsheet
 
@@ -684,7 +684,7 @@ def check_url(url):
         return response_code
 
 
-def run():
+def run_audit():
     """
     Calls a series of functions to run data audits on UGA's ArchivesSpace staging data with the API and MySQL database.
     It generates an excel spreadsheet found in the reports directory
@@ -805,17 +805,28 @@ def run():
     duplicate_agent_persons(workbook)
     check_creators(workbook, aspace_client)
     check_res_levels(workbook, aspace_client)
-    source_path = create_export_folder()
-    export_eads(workbook, source_path, aspace_client)
-    check_urls(workbook, source_path)
-    workbook.remove(workbook["Sheet"])
+    # source_path = create_export_folder()
+    # export_eads(workbook, source_path, aspace_client)
+    # check_urls(workbook, source_path)
 
     try:
-        workbook.remove(workbook["Sheet1"])
+        workbook.remove(workbook["Sheet"])
     except Exception as e:
         print(e)
+    # try:
+    #     workbook.remove(workbook["Sheet1"])
+    # except Exception as e:
+    #     print(e)
 
     workbook.save(spreadsheet)
 
 
-run()
+def run_script():
+    """
+    Runs run_audit() and email_users() functions to run data audit and email users the generated spreadsheet
+    """
+    run_audit()
+    # put email function here
+
+
+run_script()
