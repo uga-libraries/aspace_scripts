@@ -92,12 +92,12 @@ def email_users(send_from, send_to, subject, message, files=None, server="localh
 
     for path in files:
         part = MIMEBase('application', "octet-stream")
-    with open(path, 'rb') as file:
-        part.set_payload(file.read())
-    encoders.encode_base64(part)
-    part.add_header('Content-Disposition',
-                    'attachment; filename={}'.format(Path(path).name))
-    msg.attach(part)
+        with open(path, 'rb') as file:
+            part.set_payload(file.read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition',
+                        'attachment; filename={}'.format(Path(path).name))
+        msg.attach(part)
 
     smtp = smtplib.SMTP(server, port)
     if use_tls:
