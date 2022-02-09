@@ -45,6 +45,9 @@ This runs several cleanup operations on our data before migration from Archivist
 ## link_subjects_resources.py
 This script grabs subjects from the ArchivesSpace database and their links to all resources and generates a spreadsheet with that info
 
+## ms3000_nofolder.py
+Gets all archival objects in collections ms3000_1a, ms3000_1b, ms3000_2a, and ms3000_2b that don't have folders in their container instances
+
 ## multiple_top_containers.sql
 This grabs published archival objects with multiple top container instances attached to it
 
