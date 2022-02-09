@@ -22,7 +22,7 @@ def generate_spreadsheet():
         data_worksheet (str): The filepath of the data audit worksheet
     """
     wb = Workbook()
-    data_spreadsheet = f'ms3000_nochildren.xlsx'
+    data_spreadsheet = f'reports/ms3000_nofolders.xlsx'
     wb.save(data_spreadsheet)
     return wb, data_spreadsheet
 
@@ -56,7 +56,6 @@ def get_aos(tree_info, aosnc, root_uri, aspace_coll_id, as_client, top_level=Fal
             if "containers" in child:
                 for container in child["containers"]:
                     if "type_2" not in container:
-                        print(child)
                         aosnc[f'{child["uri"]}'] = (child["title"], child["level"],
                                                     f'{container["top_container_type"]} '
                                                     f'{container["top_container_indicator"]}',
