@@ -675,12 +675,11 @@ def check_url(url):
         return response_code
 
 
-def run_audit():
+def run_audit(workbook, spreadsheet):
     """
     Calls a series of functions to run data audits on UGA's ArchivesSpace staging data with the API and MySQL database.
     It generates an excel spreadsheet found in the reports directory
     """
-    workbook, spreadsheet = generate_spreadsheet()
     aspace_client = connect_aspace_api()
     controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
                                                 "occupation", "style_period", "technique", "temporal", "topical",
@@ -796,9 +795,9 @@ def run_audit():
     duplicate_agent_persons(workbook)
     check_creators(workbook, aspace_client)
     check_res_levels(workbook, aspace_client)
-    # source_path = create_export_folder()
-    # export_eads(workbook, source_path, aspace_client)
-    # check_urls(workbook, source_path)
+    source_path = create_export_folder()
+    export_eads(workbook, source_path, aspace_client)
+    check_urls(workbook, source_path)
 
     try:
         workbook.remove(workbook["Sheet"])
@@ -813,15 +812,22 @@ def run_script():
     """
     Runs run_audit() and email_users() functions to run data audit and email users the generated spreadsheet
     """
-    audit_file = run_audit()
-    audit_spreadsheet = str(Path.joinpath(Path.cwd(), audit_file))
-    message_sample = f'This is a test to see if this python script sends an email.\nThis is only a test.'
-    email_users(cs_email, [cs_email], f'{audit_file}', message_sample, files=[audit_spreadsheet], server=smtp_email)
+    audit_workbook, audit_spreadsheet = generate_spreadsheet()
+    try:
+        audit_filename = run_audit(audit_workbook, audit_spreadsheet)
+    except Exception as e:
+        error_message = f'Audit failed with error: {e}'
+        email_users(cs_email, [cs_email], 'data_audit-FAIL', error_message, server=email_server)
+    else:
+        spreadsheet_filepath = str(Path.joinpath(Path.cwd(), audit_filename))
+        message_sample = f'ArchivesSpace data audit generated. See attachment.'
+        email_users(cs_email, [cs_email, ks_email, rl_email], f'{audit_filename}', message_sample,
+                    files=[spreadsheet_filepath], server=email_server)
+        os.remove(spreadsheet_filepath)
     try:
         os.remove(str(Path.joinpath(Path.cwd(), "source_eads")))
     except Exception as e:
         print(e)
-    os.remove(audit_spreadsheet)
 
 
 run_script()
