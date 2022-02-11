@@ -61,8 +61,7 @@ def connect_db():
         return staging_connect, staging_cursor
 
 
-def email_users(send_from, send_to, subject, message, files=None, server="localhost", port=587, username='',
-                password='', use_tls=True):
+def email_users(send_from, send_to, subject, message, files=None, server="localhost", port=25, use_tls=False):
     """Compose and send email with provided info and attachments.
 
     Args:
@@ -73,8 +72,6 @@ def email_users(send_from, send_to, subject, message, files=None, server="localh
         files (list[str]): list of file paths to be attached to email
         server (str): mail server host name
         port (int): port number
-        username (str): server auth username
-        password (str): server auth password
         use_tls (bool): use TLS mode
     """
     if files is None:
@@ -102,14 +99,8 @@ def email_users(send_from, send_to, subject, message, files=None, server="localh
     smtp = smtplib.SMTP(server, port)
     if use_tls:
         smtp.starttls()
-    smtp.login(username, password)
     smtp.sendmail(send_from, send_to, msg.as_string())
     smtp.quit()
-
-
-# message_sample = f'This is a test to see if this python script sends an email.\nThis is only a test.'
-# email_users(cs_email, [cs_email], "test_email", message_sample,
-#             files=[str(Path.joinpath(Path.cwd(), "data/data_audit_2022-02-04.xlsx"))], server="")
 
 
 def query_database(connection, cursor, statement):
@@ -618,7 +609,7 @@ def check_urls(wb, source_path):
     Returns:
         None
     """
-    print("Checking for URL erros...")
+    print("Checking for URL errors...")
     headers = ["Repository", "Resource ID", "Parent Title", "URL", "URL Error Code"]
     checkurls_sheet = write_headers(wb, "URL Errors", headers)
     repo = None
@@ -813,20 +804,24 @@ def run_audit():
         workbook.remove(workbook["Sheet"])
     except Exception as e:
         print(e)
-    # try:
-    #     workbook.remove(workbook["Sheet1"])
-    # except Exception as e:
-    #     print(e)
 
     workbook.save(spreadsheet)
+    return spreadsheet
 
 
 def run_script():
     """
     Runs run_audit() and email_users() functions to run data audit and email users the generated spreadsheet
     """
-    run_audit()
-    # put email function here
+    audit_file = run_audit()
+    audit_spreadsheet = str(Path.joinpath(Path.cwd(), audit_file))
+    message_sample = f'This is a test to see if this python script sends an email.\nThis is only a test.'
+    email_users(cs_email, [cs_email], f'{audit_file}', message_sample, files=[audit_spreadsheet], server=smtp_email)
+    try:
+        os.remove(str(Path.joinpath(Path.cwd(), "source_eads")))
+    except Exception as e:
+        print(e)
+    os.remove(audit_spreadsheet)
 
 
 run_script()
