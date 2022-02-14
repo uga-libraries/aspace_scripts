@@ -30,6 +30,7 @@ def connect_aspace_api():
     Returns:
          client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
     """
+
     client: ASnakeClient = ASnakeClient(baseurl=as_api, username=as_auditor_un, password=as_auditor_pw)
     client.authorize()
     return client
@@ -43,6 +44,7 @@ def connect_db():
          staging_connect: The connection to the staging database
          staging_cursor: The cursor of results for the staging database
     """
+
     try:
         staging_connect = mysql.connect(user=as_dbstag_un,
                                         password=as_dbstag_pw,
@@ -74,6 +76,7 @@ def email_users(send_from, send_to, subject, message, files=None, server="localh
         port (int): port number
         use_tls (bool): use TLS mode
     """
+
     if files is None:
         files = []
     send_to_str = ""
@@ -116,6 +119,7 @@ def query_database(connection, cursor, statement):
     Returns:
         worksheet (openpysl.worksheet): An openpyxl worksheet class
     """
+
     cursor.execute(statement)
     results = cursor.fetchall()
     cursor.close()
@@ -131,6 +135,7 @@ def generate_spreadsheet():
         wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
         data_worksheet (str): The filepath of the data audit worksheet
     """
+
     wb = Workbook()
     data_spreadsheet = f'data_audit_{str(date.today())}.xlsx'
     wb.save(data_spreadsheet)
@@ -149,6 +154,7 @@ def write_headers(wb, sheetname, headers):
     Returns:
         worksheet (openpysl.worksheet): An openpyxl worksheet class
     """
+
     worksheet = wb.create_sheet(sheetname)
     worksheet.title = sheetname
     header_index = 0
@@ -170,6 +176,7 @@ def standardize_resids(results):
     Returns:
         updated_results (list): Updated results list containing more readable resource identifiers
     """
+
     updated_results = []
     for result in list(results):
         new_result = list(result)
@@ -193,6 +200,7 @@ def update_booleans(results):
     Returns:
         checked_results (list): Updated results list containing True, False in place of 0s, 1s
     """
+
     updated_results = []
     for result in list(results):
         single_row = list(result)
@@ -224,6 +232,7 @@ def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
     Returns:
         None
     """
+
     print(f'Checking {sheetname}... ', flush=True, end='')
     worksheet = write_headers(wb, sheetname, headers)
     connection, cursor = connect_db()
@@ -253,6 +262,7 @@ def check_controlled_vocabs(wb, vocab, terms, terms_num):
     Returns:
         None
     """
+
     print(f'\nChecking controlled vocabularies: {vocab}... ')
     write_row_index = 2
     headers = [str(vocab), "Read Only?", "Suppressed?"]
@@ -286,6 +296,7 @@ def check_creators(wb, as_client):
     Returns:
         None
     """
+
     print("Checking resources without creators...")
     headers = ["Repository", "Resource ID", "Publish?", "Creator"]
     creator_sheet = write_headers(wb, "Resources without Creators", headers)
@@ -338,6 +349,7 @@ def check_child_levels(top_child_uri, root_uri, top_level, top_child_title, as_c
         top_child_title (str): The title of the parent archival object
         levels (list): A list of all levels of the children of the parent archival object
     """
+
     levels = []
     if top_level is True:
         tl_tree = as_client.get(f'{top_child_uri}/tree/root').json()
@@ -376,6 +388,7 @@ def get_top_children(tree_info, child_levels, root_uri, aspace_coll_id, as_clien
     Returns:
         child_levels (dict): The archival objects on the same level of each other within a resource
     """
+
     if tree_info["child_count"] > 0 and tree_info["uri"] not in child_levels:
         child_levels[f"{tree_info['uri']}"] = (tree_info["title"], tree_info["child_count"], tree_info["level"],
                                                aspace_coll_id, top_level)
@@ -412,6 +425,7 @@ def check_res_levels(wb, as_client):
     Returns:
         None
     """
+
     print("Checking children levels...")
     headers = ["Repository", "Resource ID", "Parent Title", "Parent URI", "Level Disparity"]
     reslevel_sheet = write_headers(wb, "Collection Level Checks", headers)
@@ -458,6 +472,7 @@ def duplicate_subjects(wb):
     Returns:
         None
     """
+
     print("Checking for duplicate subjects...", flush=True, end='')
     headers = ["Original Subject", "Original Subject ID", "Duplicate Subject", "Duplicate Subject ID"]
     statement = f'SELECT title, id FROM subject'
@@ -475,6 +490,7 @@ def duplicate_agent_persons(wb):
     Returns:
         None
     """
+
     print("Checking for duplicate agents...", flush=True, end='')
     headers = ["Original Agent", "Original Agent ID", "Duplicate Agent", "Duplicate Agent ID"]
     statement = f'SELECT sort_name, agent_person_id FROM name_person'
@@ -496,6 +512,7 @@ def check_duplicates(wb, headers, statement, sheetname, uri_string):
     Returns:
         None
     """
+
     write_row_index = 2
     vocab_sheet = write_headers(wb, sheetname, headers)
     connection, cursor = connect_db()
@@ -526,6 +543,7 @@ def create_export_folder():
     """
     Creates a directory at the same level of the script (source_eads) for storing all exported EAD.xml files
     """
+
     try:
         current_directory = os.getcwd()
         for root, directories, files in os.walk(current_directory):
@@ -541,6 +559,19 @@ def create_export_folder():
         os.mkdir(source_path)
         print("{} folder created\n".format(folder))
         return str(Path(source_path))
+
+
+def delete_export_folder():
+    """
+    Deletes the source_eads directory and all files within if it exists
+    """
+
+    source_eads_path = str(Path.joinpath(Path.cwd(), "source_eads"))
+    if os.path.exists(source_eads_path):
+        for filename in os.listdir(source_eads_path):
+            filepath = str(os.path.join(source_eads_path, filename))
+            os.remove(filepath)
+        os.rmdir(str(Path.joinpath(Path.cwd(), "source_eads")))
 
 
 def export_eads(wb, source_path, as_client):
@@ -562,6 +593,7 @@ def export_eads(wb, source_path, as_client):
     Returns:
         None
     """
+
     print("Checking for EAD export errors...")
     headers = ["Repository", "Resource ID", "Export Error"]
     checkexports_sheet = write_headers(wb, "Export Errors", headers)
@@ -609,6 +641,7 @@ def check_urls(wb, source_path):
     Returns:
         None
     """
+
     print("Checking for URL errors...")
     headers = ["Repository", "Resource ID", "Parent Title", "URL", "URL Error Code"]
     checkurls_sheet = write_headers(wb, "URL Errors", headers)
@@ -662,6 +695,7 @@ def check_url(url):
     Returns:
         response_code (int): The response code from requesting the URL
     """
+
     response_code = None
     try:
         response = requests.get(url, allow_redirects=True, timeout=30)
@@ -679,7 +713,15 @@ def run_audit(workbook, spreadsheet):
     """
     Calls a series of functions to run data audits on UGA's ArchivesSpace staging data with the API and MySQL database.
     It generates an excel spreadsheet found in the reports directory
+
+    Args:
+        workbook (openpyxl.Workbook): openpyxl Workbook class to use to edit the spreadsheet
+        spreadsheet (str): filename of the spreadsheet
+
+    Returns:
+        None
     """
+
     aspace_client = connect_aspace_api()
     controlled_vocabs = {"Subject_Term_Type": [["cultural_context", "function", "genre_form", "geographic",
                                                 "occupation", "style_period", "technique", "temporal", "topical",
@@ -784,50 +826,69 @@ def run_audit(workbook, spreadsheet):
                "EAD-IDs": [["Repository", "Resource Title", "Resource ID", "EAD ID"], eadid_statement,
                            {"resids": True}, {"booleans": False}]}
 
-    for term, info in controlled_vocabs.items():
-        check_controlled_vocabs(workbook, term, info[0], info[1])
-
-    for query, info in queries.items():
-        headers, sql_statement, resids, bools = info[0], info[1], info[2]["resids"], info[3]["booleans"]
-        run_query(workbook, query, headers, sql_statement, resid=resids, booleans=bools)
-
+    # for term, info in controlled_vocabs.items():
+    #     check_controlled_vocabs(workbook, term, info[0], info[1])
+    #
+    # for query, info in queries.items():
+    #     headers, sql_statement, resids, bools = info[0], info[1], info[2]["resids"], info[3]["booleans"]
+    #     run_query(workbook, query, headers, sql_statement, resid=resids, booleans=bools)
+    #
     duplicate_subjects(workbook)
-    duplicate_agent_persons(workbook)
-    check_creators(workbook, aspace_client)
-    check_res_levels(workbook, aspace_client)
+    # duplicate_agent_persons(workbook)
+    # check_creators(workbook, aspace_client)
+    # check_res_levels(workbook, aspace_client)
     source_path = create_export_folder()
-    export_eads(workbook, source_path, aspace_client)
-    check_urls(workbook, source_path)
+    # export_eads(workbook, source_path, aspace_client)
+    # check_urls(workbook, source_path)
 
-    try:
-        workbook.remove(workbook["Sheet"])
-    except Exception as e:
-        print(e)
+    # try:
+    #     workbook.remove(workbook["Sheet"])
+    # except Exception as e:
+    #     print(e)
 
     workbook.save(spreadsheet)
-    return spreadsheet
+
+
+def email_error(script_error):
+    """
+    Emails admin in case an error is generated when running the script
+
+    Args:
+        script_error (str): The error message to be included in the email
+
+    Returns:
+        None
+    """
+
+    error_message = f'Audit failed with error: {script_error}'
+    email_users(cs_email, [cs_email], 'data_audit-FAIL', error_message, server=email_server)
 
 
 def run_script():
     """
     Runs run_audit() and email_users() functions to run data audit and email users the generated spreadsheet
     """
-    audit_workbook, audit_spreadsheet = generate_spreadsheet()
+
+    audit_workbook, spreadsheet_filename = generate_spreadsheet()
+    spreadsheet_filepath = str(Path.joinpath(Path.cwd(), spreadsheet_filename))
     try:
-        audit_filename = run_audit(audit_workbook, audit_spreadsheet)
+        run_audit(audit_workbook, spreadsheet_filename)
     except Exception as e:
-        error_message = f'Audit failed with error: {e}'
-        email_users(cs_email, [cs_email], 'data_audit-FAIL', error_message, server=email_server)
+        email_error(e)
     else:
-        spreadsheet_filepath = str(Path.joinpath(Path.cwd(), audit_filename))
-        message_sample = f'ArchivesSpace data audit generated. See attachment.'
-        email_users(cs_email, [cs_email, ks_email, rl_email], f'{audit_filename}', message_sample,
-                    files=[spreadsheet_filepath], server=email_server)
-        os.remove(spreadsheet_filepath)
-    try:
-        os.remove(str(Path.joinpath(Path.cwd(), "source_eads")))
-    except Exception as e:
-        print(e)
+        try:
+            message_sample = f'ArchivesSpace data audit generated. See attachment.'
+            email_users(cs_email, [cs_email], f'{spreadsheet_filename}', message_sample,  # ks_email, rl_email
+                        files=[spreadsheet_filepath], server=email_server)
+        except Exception as e:
+            email_error(e)
+    finally:
+        try:
+            if os.path.exists(spreadsheet_filepath):
+                os.remove(spreadsheet_filepath)
+            delete_export_folder()
+        except Exception as e:
+            email_error(e)
 
 
 run_script()
