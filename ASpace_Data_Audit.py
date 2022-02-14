@@ -874,21 +874,21 @@ def run_script():
     try:
         run_audit(audit_workbook, spreadsheet_filename)
     except Exception as e:
-        email_error(e)
+        email_error(str(e))
     else:
         try:
             message_sample = f'ArchivesSpace data audit generated. See attachment.'
             email_users(cs_email, [cs_email], f'{spreadsheet_filename}', message_sample,  # ks_email, rl_email
                         files=[spreadsheet_filepath], server=email_server)
         except Exception as e:
-            email_error(e)
+            email_error(str(e))
     finally:
         try:
             if os.path.exists(spreadsheet_filepath):
                 os.remove(spreadsheet_filepath)
             delete_export_folder()
         except Exception as e:
-            email_error(e)
+            email_error(str(e))
 
 
 run_script()
