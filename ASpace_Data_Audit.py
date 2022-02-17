@@ -836,7 +836,7 @@ def run_audit(workbook, spreadsheet):
     duplicate_subjects(workbook)
     duplicate_agent_persons(workbook)
     check_creators(workbook, aspace_client)
-    check_res_levels(workbook, aspace_client)
+    # check_res_levels(workbook, aspace_client)
     source_path = create_export_folder()
     export_eads(workbook, source_path, aspace_client)
     check_urls(workbook, source_path)
@@ -878,7 +878,7 @@ def run_script():
     else:
         try:
             message_sample = f'ArchivesSpace data audit generated. See attachment.'
-            email_users(cs_email, [cs_email], f'{spreadsheet_filename}', message_sample,  # ks_email, rl_email
+            email_users(cs_email, [cs_email, ks_email, rl_email], f'{spreadsheet_filename}', message_sample,  # ks_email, rl_email
                         files=[spreadsheet_filepath], server=email_server)
         except Exception as e:
             email_error(str(e))
