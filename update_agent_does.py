@@ -76,10 +76,10 @@ def get_does_cache():
 
 def get_diffagt_cache():
     try:
-        edited_agents_cache = open("EDTAGT_DATA.json", "r")
-        read_ed_cache = edited_agents_cache.read()
+        compare_agents_cache = open("EDTAGT_DATA.json", "r")
+        read_ed_cache = compare_agents_cache.read()
         edagt_cache = json.loads(read_ed_cache)
-        edited_agents_cache.close()
+        compare_agents_cache.close()
     except Exception as e:
         edagt_cache = {}
         print(e)
@@ -118,14 +118,14 @@ def get_agents(client, instance, agent_cache):
     return count
 
 
-def edited_agents(agent_cache, edagt_cache):
+def compare_agents(agent_cache, edagt_cache):
     for agent, agent_data in agent_cache.items():
         original_uri = agent.split("-")[0]
         staging_uri = original_uri + "-staging"
         prod_uri = original_uri + "-prod"
-        if staging_uri not in agent_cache:
+        if prod_uri not in agent_cache:
             if original_uri not in edagt_cache:
-                edagt_cache[original_uri] = agent_cache[prod_uri]
+                edagt_cache[original_uri] = agent_cache[staging_uri]
                 with open("EDTAGT_DATA.json", "w") as edtagt:
                     edit_agent = json.dumps(edagt_cache)
                     edtagt.write(edit_agent)
@@ -223,7 +223,7 @@ def run(arguments, prod_client, staging_client):
         print(f'Staging count: {staging_count}\nProd count: {prod_count}')
         return "Success"
     elif arguments == "update does":
-        edited_agents(total_agent_cache, diff_agent_cache)
+        compare_agents(total_agent_cache, diff_agent_cache)
         update_does(diff_agent_cache, prod_client)
         return "Success"
     else:
