@@ -891,4 +891,5 @@ def run_script():
             email_error(str(e))
 
 
-run_script()
+if __name__ == "__main__":
+    run_script()
