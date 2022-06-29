@@ -1,91 +1,165 @@
 # Scripts
 
 ## api_test_project_template.py
-This script is a template for making scripts working with the ArchivesSpace API, particularly working with the ArchivesSnake library: https://github.com/archivesspace-labs/ArchivesSnake
+
+Template for making scripts working with the ArchivesSpace API, particularly working with the ArchivesSnake
+library: https://github.com/archivesspace-labs/ArchivesSnake
 
 ## as_functions.py
-A test script with different functions testing how to start up a series of background import jobs and monitor their progress
+
+A test script with different functions testing how to start up a series of background import jobs and monitor their
+progress
 
 ## ASpace_Data_Audit.py
-A series of SQL queries, API calls, and exports to generate a spreadsheet for data cleanup.
+
+A series of SQL queries, API calls, and exports to generate a spreadsheet for data cleanup
 
 ## aspace_migration.py
-This script runs a gamut of different cleanup functions against ArchivesSpace after UGA's migration from Archivists' Toolkit
+
+Runs a gamut of different cleanup functions against ArchivesSpace after UGA's migration from Archivists'
+Toolkit
 
 ## check_aspace_aos.py
-This script checks all archival objects in ArchivesSpace and checks to see what objects are listed as collections, as well as updating ms3789 to change its objects from 'collection' to 'file'
+
+Checks all archival objects in ArchivesSpace and checks to see what objects are listed as collections, as well as
+updating ms3789 to change its objects from 'collection' to 'file'
 
 ## check_child_counts.py
-This script checks how many children a parent object has in ArchivesSpace and if the number of children is equal to or greater than 1000, logs them in a .csv file
+
+Checks how many children a parent object has in ArchivesSpace and if the number of children is equal to or greater than
+1000, logs them in a .csv file
 
 ## check_enumerations.py
-This script checks a standard list of controlled vocabularly lists and updates ArchivesSpace by deleting or merging values
+
+Checks a standard list of controlled vocabularly lists and updates ArchivesSpace by deleting or merging values
 
 ## check_file_levels.py
-This script was checking for parent files (archival objects with children) that did not have Instances or top containers. It's confusing.
+
+Checks for parent files (archival objects with children) that did not have Instances or top containers. It's confusing.
 
 ## check_urls.py
-This script exported all published resources from ASpace as an EAD.xml file, then took those files and looked for any URLs that were present, checked their HTTP status and if it returned an error (anything but 200), then logged the error in a spreadsheet. This was later adapted to make the Check URLs custom report plugin for ArchivesSpace.
+
+Exported all published resources from ASpace as an EAD.xml file, then took those files and looked for any URLs that were
+present, checked their HTTP status and if it returned an error (anything but 200), then logged the error in a
+spreadsheet. This was later adapted to make the Check URLs custom report plugin for ArchivesSpace.
+
+## compare_agents_311.py
+
+Quick and dirty method for compareing agents from our ArchivesSpace staging environment (v 3.1.1)
+and compares then to our production enviornment (2.8.1). In run(), first uncomment the first 4 lines and run
+get_agents() on prod and staging, then run edited_agents() to generate the EDTAGT_DATA.json with all the agents that
+lost their dates of existence during the upgrade to staging (3.1.1). Make a copy of that file for backup, then run
+update_does() AFTER UPGRADING prod to 3.1.1 to add the dates of existence back to those agents. See update_agent_does.py
+for a more user-friendly script
 
 ## delete_unknown_containers.py
-This script checks archival objects for specific resources in ArchivesSpace and if they have an 'unknown_container' as the value of their indicator, then it deletes that object
+
+Checks archival objects for specific resources in ArchivesSpace and if they have an 'unknown_container' as the value of
+their indicator, then it deletes that object
 
 ## export_all_resources.py
-This script exports all published resources for every repository in an ArchivesSpace instance and assigns a concatenated version of the identifier as the filename
+
+Exports all published resources for every repository in an ArchivesSpace instance and assigns a concatenated version of
+the identifier as the filename
 
 ## find_unknown_containers.py
-This script finds parent archival objects that have 'unknown container' in their identifier and logs it into a spreadsheet
+
+Finds parent archival objects that have 'unknown container' in their identifier and logs it into a spreadsheet
 
 ## generate_subject-agent_list.py
-This script writes all subjects and agents to a spreadsheet with their title and URI. This script was made as the first step in a project to cleanup subjects and agents in ArchivesSpace. The final step is outlined in update_subjects_agents.py
+
+Writes all subjects and agents to a spreadsheet with their title and URI. This script was made as the first step in a
+project to cleanup subjects and agents in ArchivesSpace. The final step is outlined in update_subjects_agents.py
 
 ## hargrett_cleanup_script.sql
-This runs several cleanup operations on our data before migration from Archivists' Toolkit to ArchivesSpace. It updates digital objects to change their repository based on their METS Identifier, delete component unique identifier (aka subdivisionIdentifier) content in that field, replaces leftover xml namespaces from note contents, set resource level to file when it is collection, and update specific digital objects to University Archives (repository 6)
+
+Runs several cleanup operations on our data before migration from Archivists' Toolkit to ArchivesSpace. It updates
+digital objects to change their repository based on their METS Identifier, delete component unique identifier (aka
+subdivisionIdentifier) content in that field, replaces leftover xml namespaces from note contents, set resource level to
+file when it is collection, and update specific digital objects to University Archives (repository 6)
 
 ## link_subjects_resources.py
-This script grabs subjects from the ArchivesSpace database and their links to all resources and generates a spreadsheet with that info
+
+Grab subjects from the ArchivesSpace database and their links to all resources and generates a spreadsheet with that
+info
 
 ## ms3000_nofolder.py
-Gets all archival objects in collections ms3000_1a, ms3000_1b, ms3000_2a, and ms3000_2b that don't have folders in their container instances
+
+Gets all archival objects in collections ms3000_1a, ms3000_1b, ms3000_2a, and ms3000_2b that don't have folders in their
+container instances
 
 ## multiple_top_containers.sql
-This grabs published archival objects with multiple top container instances attached to it
+
+Grabs published archival objects with multiple top container instances attached to it
 
 ## pre_migration_cleanup.py
-This script attempts to run SQL updates on Archivists' Toolkit databases for cleanup before migrating to ArchivesSpace
+
+Attempts to run SQL updates on Archivists' Toolkit databases for cleanup before migrating to ArchivesSpace
 
 ## publish_do_fvs.py
-This script publishes all digital object file versions
+
+Publishes all digital object file versions
 
 ## publish_dos.py
-This script publishes all digital objects
+
+Publishes all digital objects
 
 ## resources_wout_creators.py
-This script checks all resources in an ArchivesSpace instance and makes an excel spreadsheet with those without creators
+
+Checks all resources in an ArchivesSpace instance and makes an excel spreadsheet with those without creators
 
 ## russell_av_containers.sql
-This grabs all top containers with instance types that are either "moving_images" or "audio" for the Russell repository
+
+Grabs all top containers with instance types that are either "moving_images" or "audio" for the Russell repository
 
 ## russell_cleanup_script.sql
-This runs several cleanup operations on our data for the Russell repository before migration from Archivists' Toolkit to ArchivesSpace. It updates FileVersions Use Statements to Audio-Streaming, changed Digital Object Show attribute to onLoad instead of replace, replaces leftover xml namespaces from note contents, and sets instance and extent types for some stubborn items.
+
+This runs several cleanup operations on our data for the Russell repository before migration from Archivists' Toolkit to
+ArchivesSpace. It updates FileVersions Use Statements to Audio-Streaming, changed Digital Object Show attribute to
+onLoad instead of replace, replaces leftover xml namespaces from note contents, and sets instance and extent types for
+some stubborn items.
+
+## test_api_endpoints.py
+
+Tests various API endpoints for ArchivesSpace
+
+## test_archobj.py
+
+Tests the various endpoints for the archival_object.rb controller file for ArchivesSpace
 
 ## test_exports.py
-This script tests the exports from the ArchivesSpace API
+
+Tests the exports from the ArchivesSpace API
 
 ## top_containers_no_barcode.sql
-This grabs all top containers that have no barcodes and are associated with published archival objects and resources
+
+Grabs all top containers that have no barcodes and are associated with published archival objects and resources
 
 ## unpublish_records.py
-This script unpublishes resources in ArchivesSpace when they have a [CLOSED] in the resource id
+
+Unpublishes resources in ArchivesSpace when they have a [CLOSED] in the resource id
 
 ## update_agentdates.py
-This script takes info from the Dates of Existence and puts them in the Dates field to display when exporting
+
+Takes info from the Dates of Existence and puts them in the Dates field to display when exporting
+
+## update_agent_does.py
+
+Provides a command line user interface for compareing agents from our ArchivesSpace staging environment (v 3.1.1) and
+compares then to our production enviornment (2.8.1). First, run the command compare agents. It generates 2 JSON files:
+AGENTS_CACHE.json stores all agents in both environments that have dates of existence; and EDTAGT_DATA.json stores all
+the agents who lost their dates of existence when upgrading from 2.8.1 to 3.1.1. Using the update does command, the
+script goes through all the agents in EDTAGT_DATA.json and adds dates of existence back to the now updated production
+environment (3.1.1).
 
 ## update_containers.py
-This script updates ArchivesSpace containers from a spreadsheet
+
+Updates ArchivesSpace containers from a spreadsheet
 
 ## update_ms30002f.py
-This script transfers a series of archival objects from ms3000_2e to ms3000_2f at the top level
+
+Transfers a series of archival objects from ms3000_2e to ms3000_2f at the top level
 
 ## update_subjects_agents.py
-This scirpt deletes and merges subjects from a spreadsheet
+
+Deletes and merges subjects from a spreadsheet

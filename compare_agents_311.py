@@ -1,3 +1,10 @@
+# This script is a quick and dirty method for compareing agents from our ArchivesSpace staging environment (v 3.1.1)
+# and compares then to our production enviornment (2.8.1). In run(), first uncomment the first 4 lines and run
+# get_agents() on prod and staging, then run edited_agents() to generate the EDTAGT_DATA.json with all the agents that
+# lost their dates of existence during the upgrade to staging (3.1.1). Make a copy of that file for backup, then run
+# update_does() AFTER UPGRADING prod to 3.1.1 to add the dates of existence back to those agents. See
+# update_agent_does.py for a more user-friendly script
+
 import json
 
 from secrets import *
@@ -20,7 +27,7 @@ except Exception as e:
 
 
 try:
-    edited_agents_cache = open("EDTAGT_DATA.json", "r")
+    edited_agents_cache = open("data/EDTAGT_DATA.json", "r")
     read_ed_cache = edited_agents_cache.read()
     EDAGT_CACHE = json.loads(read_ed_cache)
     edited_agents_cache.close()
@@ -69,7 +76,7 @@ def edited_agents():
         if staging_uri not in AGENT_CACHE:
             if original_uri not in EDAGT_CACHE:
                 EDAGT_CACHE[original_uri] = AGENT_CACHE[prod_uri]
-                with open("EDTAGT_DATA.json", "w") as edtagt:
+                with open("data/EDTAGT_DATA.json", "w") as edtagt:
                     edit_agent = json.dumps(EDAGT_CACHE)
                     edtagt.write(edit_agent)
                     edtagt.close()

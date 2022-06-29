@@ -728,7 +728,7 @@ def run_audit(workbook, spreadsheet):
                                                 "uniform_title"], 54],
                          "Subject_Sources": [["aat", "lcsh", "local", "tgn", "lcnaf"], 23],
                          "Finding_Aid_Status_Terms": [["completed", "unprocessed", "in_process", "problem"], 21],
-                         "Name_Sources": [["local", "naf", "ingest"], 4],
+                         "Name_Sources": [["local", "naf", "ingest", "snac"], 4],
                          "Instance_Types": [["audio", "books", "digital_object", "graphic_materials", "maps",
                                              "microform", "mixed_materials", "moving_images", "electronic_records",
                                              "artifacts"], 22],
@@ -891,4 +891,5 @@ def run_script():
             email_error(str(e))
 
 
-run_script()
+if __name__ == "__main__":
+    run_script()
