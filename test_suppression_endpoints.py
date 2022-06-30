@@ -8,7 +8,20 @@ from secrets import *
 
 logging.setup_logging(level='DEBUG')
 
-# Example template
+# cURL example template
+# curl -s -F password="password" "http://localhost:8089/users/{your_username}/login"
+# # Replace "password" with your password and "http://localhost:8089 with your ASpace API URL followed by
+# # /users/{your_username}/login"
+
+# set SESSION="session_id"
+# # If using Git Bash, replace set with export
+
+# curl -H "X-ArchivesSpace-Session: $SESSION" //
+# "http://localhost:8089/date_calculator?record_uri=/repositories/{aspace_repository_id}/archival_objects/{aspace_object_id}"
+# # Replace "http://localhost:8089" with your ASpace API URL, {aspace_repository_id} with the repository ID, and
+# # {aspace_object_id} with the archival object ID
+
+# Python example template
 # from asnake.client import ASnakeClient  # import the ArchivesSnake client
 #
 # client = ASnakeClient(baseurl="http://localhost:8089", username="admin", password="admin")
