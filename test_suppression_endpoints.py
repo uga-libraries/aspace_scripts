@@ -43,27 +43,12 @@ headers = {'X-ArchivesSpace-Session': session, 'Content-Type': 'application/json
 client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
 client.authorize()
 
-# ______Suppress Archival Object______
-# ____PYTHON EXAMPLE____
-    # suppress_archobj = client.post("/repositories/:repo_id:/archival_objects/:archobj_id:/suppressed",
-    #                                params={"suppressed": True})
-# Replace :repo_id: with the ArchivesSpace repository ID, :archobj_id: with the ArchivesSpace ID of the archival object,
-# and change the "suppressed" value to True to suppress the archival object or False to unsuppress the archival object
 
-    # print(suppress_archobj.json())
-# Output: {'status': 'Suppressed', 'id': 717782, 'suppressed_state': True}
+# ______Suppress Accession______
+# ____PYTHON EXAMPLE____
+
 
 # ____cURL EXAMPLE____
-# $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/archival_objects/:archobj_id:/suppressed?suppressed=true"
-# Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
-# :archobj_id: with the ArchivesSpace ID of the archival object, and change the "suppressed" value to true to suppress
-# the archival object or false to unsuppress the archival object
-
-# Output: {"status":"Suppressed","id":717782,"suppressed_state":true}
-
-#   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-#                                  Dload  Upload   Total   Spent    Left  Speed
-# 100    60  100    60    0     0    631      0 --:--:-- --:--:-- --:--:--   638{"status":"Suppressed","id":717782,"suppressed_state":true}
 
 
 # ______Suppress Resource______
@@ -89,5 +74,38 @@ client.authorize()
 # 100    58  100    58    0     0    276      0 --:--:-- --:--:-- --:--:--   276{"status":"Suppressed","id"::resource_id:,"suppressed_state":true}
 
 
+# ______Suppress Archival Object______
+# ____PYTHON EXAMPLE____
+    # suppress_archobj = client.post("/repositories/:repo_id:/archival_objects/:archobj_id:/suppressed",
+    #                                params={"suppressed": True})
+# Replace :repo_id: with the ArchivesSpace repository ID, :archobj_id: with the ArchivesSpace ID of the archival object,
+# and change the "suppressed" value to True to suppress the archival object or False to unsuppress the archival object
+
+    # print(suppress_archobj.json())
+# Output: {'status': 'Suppressed', 'id': 717782, 'suppressed_state': True}
+
+# ____cURL EXAMPLE____
+# $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/archival_objects/:archobj_id:/suppressed?suppressed=true"
+# Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
+# :archobj_id: with the ArchivesSpace ID of the archival object, and change the "suppressed" value to true to suppress
+# the archival object or false to unsuppress the archival object
+
+# Output: {"status":"Suppressed","id":717782,"suppressed_state":true}
+
+#   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+#                                  Dload  Upload   Total   Spent    Left  Speed
+# 100    60  100    60    0     0    631      0 --:--:-- --:--:-- --:--:--   638{"status":"Suppressed","id":717782,"suppressed_state":true}
 
 
+# ______Suppress Digital Object______
+# ____PYTHON EXAMPLE____
+
+
+# ____cURL EXAMPLE____
+
+
+# ______Suppress Digital Object Component______
+# ____PYTHON EXAMPLE____
+
+
+# ____cURL EXAMPLE____
