@@ -46,9 +46,25 @@ client.authorize()
 
 # ______Suppress Accession______
 # ____PYTHON EXAMPLE____
+    # suppress_accession = client.post("repositories/:repo_id:/accessions/:accession_id:/suppressed",
+    #                                  params={"suppressed": True})
+# Replace :repo_id: with the ArchivesSpace repository ID, :accession_id: with the ArchivesSpace ID of the accession, and
+# change the "suppressed" value to True to suppress the accession or False to unsuppress the accession
 
+    # print(suppress_accession.json())
+# Output: {'status': 'Suppressed', 'id': 3828, 'suppressed_state': True}
 
 # ____cURL EXAMPLE____
+# $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/accessions/:accession_id:/suppressed?suppressed=true"
+# Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
+# :accession_id: with the ArchivesSpace ID of the accession, and change the "suppressed" value to true to suppress the
+# accession or false to unsuppress the accession
+
+# Output: {"status":"Suppressed","id":3828,"suppressed_state":true}
+
+#   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+#                                  Dload  Upload   Total   Spent    Left  Speed
+# 100    58  100    58    0     0    235      0 --:--:-- --:--:-- --:--:--   235{"status":"Suppressed","id":3828,"suppressed_state":true}
 
 
 # ______Suppress Resource______
@@ -71,7 +87,7 @@ client.authorize()
 
 #   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
 #                                  Dload  Upload   Total   Spent    Left  Speed
-# 100    58  100    58    0     0    276      0 --:--:-- --:--:-- --:--:--   276{"status":"Suppressed","id"::resource_id:,"suppressed_state":true}
+# 100    58  100    58    0     0    276      0 --:--:-- --:--:-- --:--:--   276{"status":"Suppressed","id":5812,"suppressed_state":true}
 
 
 # ______Suppress Archival Object______
