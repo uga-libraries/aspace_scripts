@@ -1,3 +1,6 @@
+# Retrieves digital object URIs from ArchivesSpace using a preformatted spreadsheet input with titles and dates of
+# archival objects to match to digital objects
+
 import PySimpleGUI as psg
 import sys
 import json

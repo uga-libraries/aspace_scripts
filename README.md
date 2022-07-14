@@ -71,6 +71,16 @@ Finds parent archival objects that have 'unknown container' in their identifier 
 Writes all subjects and agents to a spreadsheet with their title and URI. This script was made as the first step in a
 project to cleanup subjects and agents in ArchivesSpace. The final step is outlined in update_subjects_agents.py
 
+## get_aos_ms30002e.py
+
+This script gets all of the archival objects for ms3000_2e
+
+
+## get_uris.py
+
+Retrieves digital object URIs from ArchivesSpace using a preformatted spreadsheet input with titles and dates of
+archival objects to match to digital objects
+
 ## hargrett_cleanup_script.sql
 
 Runs several cleanup operations on our data before migration from Archivists' Toolkit to ArchivesSpace. It updates
@@ -130,6 +140,10 @@ Tests the various endpoints for the archival_object.rb controller file for Archi
 ## test_exports.py
 
 Tests the exports from the ArchivesSpace API
+
+## test_suppression_endpoints.py
+
+Tests suppression.rb endpoints for ArchivesSpace
 
 ## top_containers_no_barcode.sql
 
