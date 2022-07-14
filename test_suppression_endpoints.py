@@ -55,7 +55,7 @@ client.authorize()
 # Output: {'status': 'Suppressed', 'id': 3828, 'suppressed_state': True}
 
 # ____cURL EXAMPLE____
-# $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/accessions/:accession_id:/suppressed?suppressed=true"
+    # $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/accessions/:accession_id:/suppressed?suppressed=true"
 # Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
 # :accession_id: with the ArchivesSpace ID of the accession, and change the "suppressed" value to true to suppress the
 # accession or false to unsuppress the accession
@@ -78,7 +78,7 @@ client.authorize()
 # Output: {'status': 'Suppressed', 'id': 5812, 'suppressed_state': True}
 
 # ____cURL EXAMPLE____
-# $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/resources/:resource_id:/suppressed?suppressed=true"
+    # $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/resources/:resource_id:/suppressed?suppressed=true"
 # Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
 # :resource_id: with the ArchivesSpace ID of the resource, and change the "suppressed" value to true to suppress the
 # resource or false to unsuppress the resource
@@ -101,7 +101,7 @@ client.authorize()
 # Output: {'status': 'Suppressed', 'id': 717782, 'suppressed_state': True}
 
 # ____cURL EXAMPLE____
-# $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/archival_objects/:archobj_id:/suppressed?suppressed=true"
+    # $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/archival_objects/:archobj_id:/suppressed?suppressed=true"
 # Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
 # :archobj_id: with the ArchivesSpace ID of the archival object, and change the "suppressed" value to true to suppress
 # the archival object or false to unsuppress the archival object
@@ -115,13 +115,46 @@ client.authorize()
 
 # ______Suppress Digital Object______
 # ____PYTHON EXAMPLE____
+    # suppress_digobj = client.post("/repositories/:repo_id:/digital_objects/:digobj_id:/suppressed",
+    #                               params={"suppressed": True})
+# Replace :repo_id: with the ArchivesSpace repository ID, :digobj_id: with the ArchivesSpace ID of the digital object,
+# and change the "suppressed" value to True to suppress the digital object or False to unsuppress the digital object
 
+    # print(suppress_digobj.json())
+# Output: {'status': 'Suppressed', 'id': 14098, 'suppressed_state': True}
 
 # ____cURL EXAMPLE____
+    # $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/digital_objects/:digobj_id:/suppressed?suppressed=false"
+# Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
+# :digobj_id: with the ArchivesSpace ID of the digital object, and change the "suppressed" value to true to suppress
+# the digital object or false to unsuppress the digital object
+
+# Output: {"status":"Suppressed","id":14098,"suppressed_state":true}
+
+#   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+#                                  Dload  Upload   Total   Spent    Left  Speed
+# 100    60  100    60    0     0    847      0 --:--:-- --:--:-- --:--:--   857{"status":"Suppressed","id":14098,"suppressed_state":false}
 
 
 # ______Suppress Digital Object Component______
 # ____PYTHON EXAMPLE____
+    # suppress_digobjcomp = client.post("/repositories/:repo_id:/digital_object_components/:digobjcomp_id:/suppressed",
+    #                                   params={"suppressed": True})
+# Replace :repo_id: with the ArchivesSpace repository ID, :digobjcomp_id: with the ArchivesSpace ID of the digital
+# object component, and change the "suppressed" value to True to suppress the digital object component or False to
+# unsuppress the digital object component
 
+    # print(suppress_digobjcomp.json())
+# Output: {'status': 'Suppressed', 'id': 3, 'suppressed_state': True}
 
 # ____cURL EXAMPLE____
+    # $ curl -X POST -H "X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/repositories/:repo_id:/digital_object_components/:digobjcomp_id:/suppressed?suppressed=true"
+# Replace http://localhost:8089 with your ArchivesSpace API URL, :repo_id: with the ArchivesSpace repository ID,
+# :digobjcomp_id: with the ArchivesSpace ID of the digital object component, and change the "suppressed" value to True
+# to suppress the digital object component or False to unsuppress the digital object component
+
+# Output: {"status":"Suppressed","id":3,"suppressed_state":true}
+
+#   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+#                                  Dload  Upload   Total   Spent    Left  Speed
+# 100    55  100    55    0     0    480      0 --:--:-- --:--:-- --:--:--   486{"status":"Suppressed","id":3,"suppressed_state":true}
