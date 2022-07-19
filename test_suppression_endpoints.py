@@ -9,13 +9,13 @@ from secrets import *
 logging.setup_logging(level='DEBUG')
 
 # cURL example template
-# curl -s -F password="password" "http://localhost:8089/users/{your_username}/login"
-# # Replace "password" with your password and "http://localhost:8089 with your ASpace API URL followed by
-# # /users/{your_username}/login"
-
+# curl -s -F password="password" "http://localhost:8089/users/:your_username:/login"
+# # Replace "password" with your password, "http://localhost:8089 with your ASpace API URL, and :your_username: with
+# # your ArchivesSpace username
+#
 # set SESSION="session_id"
 # # If using Git Bash, replace set with export
-
+#
 # curl -H "X-ArchivesSpace-Session: $SESSION" //
 # "http://localhost:8089/date_calculator?record_uri=/repositories/{aspace_repository_id}/archival_objects/{aspace_object_id}"
 # # Replace "http://localhost:8089" with your ASpace API URL, {aspace_repository_id} with the repository ID, and
@@ -35,13 +35,13 @@ logging.setup_logging(level='DEBUG')
 #
 # print(archival_object.json())
 # # Output: {"lock_version":0,"position":0,"publish":true,"ref_id":"ref01_uqj","title":"Archival Object",...}
-
-req_auth = requests.post(as_api_stag + '/users/' + as_un + '/login?password=' + as_pw).json()
-session = req_auth['session']
-headers = {'X-ArchivesSpace-Session': session, 'Content-Type': 'application/json'}
-
-client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
-client.authorize()
+#
+# req_auth = requests.post(as_api_stag + '/users/' + as_un + '/login?password=' + as_pw).json()
+# session = req_auth['session']
+# headers = {'X-ArchivesSpace-Session': session, 'Content-Type': 'application/json'}
+#
+# client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
+# client.authorize()
 
 
 # ______Suppress Accession______
