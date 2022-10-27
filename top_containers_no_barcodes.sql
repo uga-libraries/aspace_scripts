@@ -2,11 +2,11 @@
  resources
 */
 
-SELECT
+SELECT DISTINCT
     repo.name AS Repository,
     ao.title AS Linked_Archival_Object_Title,
     ao.ref_id AS Linked_Archival_Object_REFID,
-    top_container.indicator, ev.value
+    top_container.indicator, ev.value, location.title AS Location
 FROM
     top_container
 JOIN
@@ -30,6 +30,12 @@ JOIN
 JOIN
     enumeration_value AS ev
         ON ev.id = top_container.type_id
+LEFT JOIN
+	top_container_housed_at_rlshp AS contloc
+		ON top_container.id = contloc.top_container_id
+LEFT JOIN
+	location
+		ON location.id = contloc.location_id
 WHERE
     top_container.barcode is NULL
     AND ao.publish is true
