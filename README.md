@@ -31,7 +31,7 @@ Checks how many children a parent object has in ArchivesSpace and if the number 
 
 ## check_enumerations.py
 
-Checks a standard list of controlled vocabularly lists and updates ArchivesSpace by deleting or merging values
+Checks a standard list of controlled vocabulary lists and updates ArchivesSpace by deleting or merging values
 
 ## check_file_levels.py
 
@@ -45,8 +45,8 @@ spreadsheet. This was later adapted to make the Check URLs custom report plugin 
 
 ## compare_agents_311.py
 
-Quick and dirty method for compareing agents from our ArchivesSpace staging environment (v 3.1.1)
-and compares then to our production enviornment (2.8.1). In run(), first uncomment the first 4 lines and run
+Quick and dirty method for comparing agents from our ArchivesSpace staging environment (v 3.1.1)
+and compares then to our production environment (2.8.1). In run(), first uncomment the first 4 lines and run
 get_agents() on prod and staging, then run edited_agents() to generate the EDTAGT_DATA.json with all the agents that
 lost their dates of existence during the upgrade to staging (3.1.1). Make a copy of that file for backup, then run
 update_does() AFTER UPGRADING prod to 3.1.1 to add the dates of existence back to those agents. See update_agent_does.py
@@ -62,6 +62,9 @@ their indicator, then it deletes that object
 Exports all published resources for every repository in an ArchivesSpace instance and assigns a concatenated version of
 the identifier as the filename
 
+## find_er_accessions.sql
+Finds electronic record accessions and their linked resources
+
 ## find_unknown_containers.py
 
 Finds parent archival objects that have 'unknown container' in their identifier and logs it into a spreadsheet
@@ -73,7 +76,7 @@ project to cleanup subjects and agents in ArchivesSpace. The final step is outli
 
 ## get_aos_ms30002e.py
 
-This script gets all of the archival objects for ms3000_2e
+This script gets all the archival objects for ms3000_2e
 
 
 ## get_uris.py
@@ -116,7 +119,7 @@ Publishes all digital objects
 
 ## resources_wout_creators.py
 
-Checks all resources in an ArchivesSpace instance and makes an excel spreadsheet with those without creators
+Checks all resources in an ArchivesSpace instance and makes an Excel spreadsheet with those without creators
 
 ## russell_av_containers.sql
 
@@ -141,6 +144,9 @@ Tests the various endpoints for the archival_object.rb controller file for Archi
 
 Tests the exports from the ArchivesSpace API
 
+## test_resource_endpoints.py
+Tests resource.rb endpoints for ArchivesSpace
+
 ## test_suppression_endpoints.py
 
 Tests suppression.rb endpoints for ArchivesSpace
@@ -159,8 +165,8 @@ Takes info from the Dates of Existence and puts them in the Dates field to displ
 
 ## update_agent_does.py
 
-Provides a command line user interface for compareing agents from our ArchivesSpace staging environment (v 3.1.1) and
-compares then to our production enviornment (2.8.1). First, run the command compare agents. It generates 2 JSON files:
+Provides a command line user interface for comparing agents from our ArchivesSpace staging environment (v 3.1.1) and
+compares then to our production environment (2.8.1). First, run the command compare agents. It generates 2 JSON files:
 AGENTS_CACHE.json stores all agents in both environments that have dates of existence; and EDTAGT_DATA.json stores all
 the agents who lost their dates of existence when upgrading from 2.8.1 to 3.1.1. Using the update does command, the
 script goes through all the agents in EDTAGT_DATA.json and adds dates of existence back to the now updated production
