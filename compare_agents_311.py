@@ -1,5 +1,5 @@
-# This script is a quick and dirty method for compareing agents from our ArchivesSpace staging environment (v 3.1.1)
-# and compares then to our production enviornment (2.8.1). In run(), first uncomment the first 4 lines and run
+# This script is a quick and dirty method for comparing agents from our ArchivesSpace staging environment (v 3.1.1)
+# and compares then to our production environment (2.8.1). In run(), first uncomment the first 4 lines and run
 # get_agents() on prod and staging, then run edited_agents() to generate the EDTAGT_DATA.json with all the agents that
 # lost their dates of existence during the upgrade to staging (3.1.1). Make a copy of that file for backup, then run
 # update_does() AFTER UPGRADING prod to 3.1.1 to add the dates of existence back to those agents. See
