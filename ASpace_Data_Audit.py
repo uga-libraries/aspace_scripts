@@ -226,7 +226,7 @@ def run_query(wb, sheetname, headers, statement, resid=False, booleans=False):
         statement (str): The MySQL statement to run against the ArchivesSpace database
         resid (bool): If a resource identifier is included in the results of the MySQL statement, run the
                                 identifier through standardize_resids()
-        booleans (bool): If booleans are included in the results of the MySQL statement, run the
+        booleans (bool): If booleans are included in the results of the MySQL statement, run
                                    them through update_booleans() to change them from numbers to TRUE or FALSE
 
     Returns:
@@ -416,7 +416,7 @@ def check_res_levels(wb, as_client):
 
     Used for consistent display on SCLFind website for finding aids. Having an archival object labeled 'file' on the
     same level as an archival object labeled 'series' looks weird and is not consistent. We want archival objects on the
-    same level to have consistent labels (with the exception of file and item as they are very similar).
+    same level to have consistent labels (except for file and item as they are very similar).
 
     Args:
         wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
@@ -709,13 +709,41 @@ def check_url(url):
         return response_code
 
 
+def search_ghost_containers(wb, as_client):
+    """
+    Search for top containers that are not linked to any resources in ArchivesSpace
+
+    Args:
+        wb (openpyxl.Workbook): The openpyxl workbook of the spreadsheet being generated for the data audit
+        as_client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
+
+    Returns:
+        None
+    """
+
+    print("Checking unlinked top containers...", flush=True, end='')
+    headers = ["Repository", "Box-Number", "Barcode", "Container URI"]
+    utc_sheet = write_headers(wb, "Unlinked Top Containers", headers)
+    repos = as_client.get("repositories").json()
+    for repo in repos:
+        repo_id = repo["uri"].split("/")[2]
+        topconts_ids = as_client.get(f'repositories/{repo_id}/top_containers', params={"all_ids": True}).json()
+        for container_id in topconts_ids:
+            container_data = as_client.get(f'repositories/{repo_id}/top_containers/{container_id}',
+                                           params={"resolve[]": True}).json()
+            if len(container_data["collection"]) == 0:
+                utc_sheet.append([repo["name"], container_data["display_string"], container_data["barcode"],
+                                  container_data["uri"]])
+    print("Done")
+
+
 def run_audit(workbook, spreadsheet):
     """
     Calls a series of functions to run data audits on UGA's ArchivesSpace staging data with the API and MySQL database.
-    It generates an excel spreadsheet found in the reports directory
+    It generates an Excel spreadsheet found in the reports directory
 
     Args:
-        workbook (openpyxl.Workbook): openpyxl Workbook class to use to edit the spreadsheet
+        workbook (openpyxl.Workbook): openpyxl Workbook class to use to edit the sheet
         spreadsheet (str): filename of the spreadsheet
 
     Returns:
@@ -840,6 +868,7 @@ def run_audit(workbook, spreadsheet):
     source_path = create_export_folder()
     export_eads(workbook, source_path, aspace_client)
     check_urls(workbook, source_path)
+    search_ghost_containers(workbook, aspace_client)
 
     try:
         workbook.remove(workbook["Sheet"])
@@ -878,7 +907,7 @@ def run_script():
     else:
         try:
             message_sample = f'ArchivesSpace data audit generated. See attachment.'
-            email_users(cs_email, [cs_email, ks_email, rl_email], f'{spreadsheet_filename}', message_sample,  # ks_email, rl_email
+            email_users(cs_email, [cs_email, ks_email, rl_email], f'{spreadsheet_filename}', message_sample,
                         files=[spreadsheet_filepath], server=email_server)
         except Exception as e:
             email_error(str(e))
