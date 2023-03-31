@@ -314,21 +314,22 @@ def check_creators(wb, as_client):
                 if id_match:
                     combined_id += value + "-"
             combined_id = combined_id[:-1]
-            if resource.json()["publish"] is True:
-                if resource.status_code == 200:
-                    if "linked_agents" in resource.json():
-                        linked_agents = resource.json()["linked_agents"]
-                        for linked_agent in linked_agents:
-                            if linked_agent["role"] == "creator":
-                                has_creator = True
-                        if has_creator is False:
+            if "publish" in resource.json():
+                if resource.json()["publish"] is True:
+                    if resource.status_code == 200:
+                        if "linked_agents" in resource.json():
+                            linked_agents = resource.json()["linked_agents"]
+                            for linked_agent in linked_agents:
+                                if linked_agent["role"] == "creator":
+                                    has_creator = True
+                            if has_creator is False:
+                                creator_sheet.append([repo["name"], combined_id, resource.json()["publish"], "None"])
+                                print(f'Repo: {repo["name"]}, Resource: {combined_id}, '
+                                      f'Publish?: {resource.json()["publish"]}')
+                        else:
                             creator_sheet.append([repo["name"], combined_id, resource.json()["publish"], "None"])
                             print(f'Repo: {repo["name"]}, Resource: {combined_id}, '
                                   f'Publish?: {resource.json()["publish"]}')
-                    else:
-                        creator_sheet.append([repo["name"], combined_id, resource.json()["publish"], "None"])
-                        print(f'Repo: {repo["name"]}, Resource: {combined_id}, '
-                              f'Publish?: {resource.json()["publish"]}')
         print("_" * 100)
 
 
@@ -626,6 +627,12 @@ def export_eads(wb, source_path, as_client):
                             local_file.write(export_ead.content)
                             local_file.close()
                             print("Exported: {}".format(combined_id))
+                        try:
+                            etree.parse(filepath)
+                        except Exception as parse_error:
+                            print(f'Error parsing file: {combined_aspace_id_clean}; Parse error: {parse_error}')
+                            checkexports_sheet.append([repo["name"], combined_aspace_id_clean, str(parse_error)])
+                            os.remove(filepath)
             else:
                 checkexports_sheet.append([repo["name"], combined_aspace_id_clean, resource.json()])
 
@@ -732,8 +739,8 @@ def search_ghost_containers(wb, as_client):
             container_data = as_client.get(f'repositories/{repo_id}/top_containers/{container_id}',
                                            params={"resolve[]": True}).json()
             if len(container_data["collection"]) == 0:
-                utc_sheet.append([repo["name"], container_data["display_string"], container_data["barcode"],
-                                  container_data["uri"]])
+                barcode = container_data["barcode"] if "barcode" in container_data else "Barcode not found"
+                utc_sheet.append([repo["name"], container_data["display_string"], barcode, container_data["uri"]])
     print("Done")
 
 
