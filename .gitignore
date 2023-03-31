@@ -24,3 +24,4 @@ data
 .gitignore
 Windows Install
 test_api_endpoints.py
+test_resource_endpoints.py
