@@ -2,8 +2,8 @@ ArchivesSnake~=0.9.1
 lxml==4.9.2
 mysql~=0.0.3
 mysqlclient==2.1.1
-mysql-connector-python==8.0.32
+mysql-connector-python==8.0.33
 openpyxl==3.1.2
 PySimpleGUI==4.60.4
-requests==2.28.2
+requests==2.30.0
 
