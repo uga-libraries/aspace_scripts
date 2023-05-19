@@ -31,7 +31,7 @@ def connect_aspace_api():
          client (ASnake.client object): the ArchivesSpace ASnake client for accessing and connecting to the API
     """
 
-    client: ASnakeClient = ASnakeClient(baseurl=as_api_stag, username=as_auditor_un, password=as_auditor_pw)
+    client: ASnakeClient = ASnakeClient(baseurl=as_api_stag, username=as_auditor_un, password=as_auditor_pw)  # Keep as_api_stag
     client.authorize()
     return client
 
