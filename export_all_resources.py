@@ -1,5 +1,6 @@
 # This script exports all published resources for every repository in an ArchivesSpace instance and assigns a
 # concatenated version of the identifier as the filename.
+import os
 import re
 from secrets import *
 from asnake.client import ASnakeClient
@@ -14,6 +15,10 @@ def export_eads(client, source_path):
     for repo in repos:
         print(repo["name"] + "\n")
         repo_id = repo["uri"].split("/")[2]
+        repo_folder = str(Path(source_path, repo["name"]))
+        if not os.path.isdir(str(Path(source_path, repo["name"]))):
+            repo_folder = str(Path(source_path, repo["name"]))
+            os.mkdir(repo_folder)
         resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
         for resource_id in resources:
             resource = client.get("repositories/{}/resources/{}".format(repo_id, resource_id))
@@ -29,7 +34,7 @@ def export_eads(client, source_path):
                     export_ead = client.get("repositories/{}/resource_descriptions/{}.xml".format(repo_id, resource_id),
                                             params={"include_unpublished": False, "include_daos": True,
                                                     "numbered_cs": True, "print_pdf": False, "ead3": False})
-                    filepath = str(Path(source_path, combined_aspace_id_clean)) + ".xml"
+                    filepath = str(Path(repo_folder, combined_aspace_id_clean)) + ".xml"
                     with open(filepath, "wb") as local_file:
                         local_file.write(export_ead.content)
                         local_file.close()
