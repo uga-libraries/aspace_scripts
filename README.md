@@ -103,7 +103,7 @@ Finds parent archival objects that have 'unknown container' in their identifier 
 ## generate_subject-agent_list.py
 
 Writes all subjects and agents to a spreadsheet with their title and URI. This script was made as the first step in a
-project to cleanup subjects and agents in ArchivesSpace. The final step is outlined in update_subjects_agents.py
+project to clean up subjects and agents in ArchivesSpace. The final step is outlined in update_subjects_agents.py
 
 ## get_aos_ms30002e.py
 
@@ -188,7 +188,7 @@ Grabs all top containers that have no barcodes and are associated with published
 
 ## unpublish_records.py
 
-Unpublishes resources in ArchivesSpace when they have a [CLOSED] in the resource id
+Unpublishes resources in ArchivesSpace when they have [CLOSED] in the resource id
 
 ## update_agentdates.py
 
