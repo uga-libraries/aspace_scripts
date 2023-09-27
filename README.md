@@ -23,7 +23,7 @@ data audit report
 
 ## Installation
 
-1. Download the repostiory via cloning to your local IDE or using GitHub's Code button and Download as ZIP
+1. Download the repository via cloning to your local IDE or using GitHub's Code button and Download as ZIP
 2. Run `pip install requirements.txt` or check the import statements for the script you want to run and install those 
 packages
 3. Create a secrets.py file with the following information:
