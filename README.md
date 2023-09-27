@@ -1,5 +1,40 @@
-# Scripts
+# Overview
+A collection of Python/SQL scripts for data cleanup, management, and others related to UGA's ArchivesSpace 
+implementation.
 
+# Getting Started
+
+## Dependencies
+Not every script requires every package as listed in the requirements.txt file. If you need to use a script, check the 
+import statements at the top to see which specific packages are needed.
+
+- [ArchivesSnake](https://github.com/archivesspace-labs/ArchivesSnake) - Library used for interacting with the 
+ArchivesSpace API
+- [lxml](https://lxml.de/) - Used to parse XML files for evaluating any XML syntax errors and parsing data from 
+downloaded XML files
+- [mysql](https://dev.mysql.com/doc/connector-python/en/) - Used to import mysql-connector
+- [mysqlclient](https://github.com/PyMySQL/mysqlclient) - Used to connect to the ArchivesSpace MySQL database
+- [mysql-connector-python](https://dev.mysql.com/doc/connector-python/en/) - Used to connect and detect any connection 
+errors to the ArchivesSpace MySQL database
+- [openpyxl](https://openpyxl.readthedocs.io/en/stable/) - Used to create and write an Excel spreadsheet to document
+data audit report
+- [PySimpleGUI](https://github.com/PySimpleGUI/PySimpleGUI) - The GUI packaged used to make GUIs
+- [requests](https://docs.python-requests.org/en/latest/index.html) - Used to check URLs and get their status codes
+
+## Installation
+
+1. Download the repostiory via cloning to your local IDE or using GitHub's Code button and Download as ZIP
+2. Run `pip install requirements.txt` or check the import statements for the script you want to run and install those 
+packages
+3. Create a secrets.py file with the following information:
+   1. An ArchivesSpace admin username, password
+   2. The URLs to your ArchivesSpace staging and production API instances
+   3. Variables with their values set to user emails you want to send the report to
+   4. The email server from which you send your email report
+   5. Your ArchivesSpace's staging database credentials, including username, password, hostname, database name, and port
+4. Run the script as `python3 ASpace_Data_Audit.py`
+
+# Workflow
 ## api_test_project_template.py
 
 Template for making scripts working with the ArchivesSpace API, particularly working with the ArchivesSnake
@@ -9,10 +44,6 @@ library: https://github.com/archivesspace-labs/ArchivesSnake
 
 A test script with different functions testing how to start up a series of background import jobs and monitor their
 progress
-
-## ASpace_Data_Audit.py
-
-A series of SQL queries, API calls, and exports to generate a spreadsheet for data cleanup
 
 ## aspace_migration.py
 
@@ -183,3 +214,15 @@ Transfers a series of archival objects from ms3000_2e to ms3000_2f at the top le
 ## update_subjects_agents.py
 
 Deletes and merges subjects from a spreadsheet
+
+(source: https://github.com/uga-libraries/general-aip)
+
+# Author
+
+- Corey Schmidt - Project Management Librarian/Archivist at the University of Georgia Libraries
+
+# Acknowledgements
+
+- ArchivesSpace community
+- Kevin Cottrell - GALILEO/Library Infrastructure Systems Architect at the University of Georgia Libraries
+- PySimpleGUI
