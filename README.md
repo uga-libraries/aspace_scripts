@@ -211,6 +211,9 @@ Updates ArchivesSpace containers from a spreadsheet
 
 Transfers a series of archival objects from ms3000_2e to ms3000_2f at the top level
 
+## update_russids.py
+This script removes all /'s from Russell resource IDs
+
 ## update_subjects_agents.py
 
 Deletes and merges subjects from a spreadsheet
