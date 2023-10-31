@@ -32,7 +32,7 @@ packages
    3. Variables with their values set to user emails you want to send the report to
    4. The email server from which you send your email report
    5. Your ArchivesSpace's staging database credentials, including username, password, hostname, database name, and port
-4. Run the script as `python3 ASpace_Data_Audit.py`
+4. Run the script as `python3 <script_name>.py`
 
 # Workflow
 ## api_test_project_template.py
@@ -199,8 +199,8 @@ Takes info from the Dates of Existence and puts them in the Dates field to displ
 Provides a command line user interface for comparing agents from our ArchivesSpace staging environment (v 3.1.1) and
 compares then to our production environment (2.8.1). First, run the command compare agents. It generates 2 JSON files:
 AGENTS_CACHE.json stores all agents in both environments that have dates of existence; and EDTAGT_DATA.json stores all
-the agents who lost their dates of existence when upgrading from 2.8.1 to 3.1.1. Using the update does command, the
-script goes through all the agents in EDTAGT_DATA.json and adds dates of existence back to the now updated production
+the agents who lost their dates of existence when upgrading from 2.8.1 to 3.1.1. Using the update command, the script 
+goes through all the agents in EDTAGT_DATA.json and adds dates of existence back to the now updated production
 environment (3.1.1).
 
 ## update_containers.py
@@ -214,8 +214,6 @@ Transfers a series of archival objects from ms3000_2e to ms3000_2f at the top le
 ## update_subjects_agents.py
 
 Deletes and merges subjects from a spreadsheet
-
-(source: https://github.com/uga-libraries/general-aip)
 
 # Author
 
