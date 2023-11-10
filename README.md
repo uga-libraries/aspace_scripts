@@ -224,7 +224,7 @@ packages
    1. If there are arguments, make sure to fill out those arguments after the python script name. Most scripts just 
    need the information listed in secrets.py file created in the installation step above.
    2. If the script is not a python script, but an SQL statement, you can either download the SQL file or copy the code
-   to your local SQL developer environment and run it there
+   to your local SQL developer environment and run it there.
 
 ## Author
 
