@@ -18,10 +18,12 @@ def update_ids(client):
         None
     """
 
+    print("Combined_ID|Old_ID|New_ID|Status")
     repo_id = "2"
     total_changes = 0
     resources = client.get("repositories/{}/resources".format(repo_id), params={"all_ids": True}).json()
     for resource_id in resources:
+        output_message = ""
         resource_data = client.get("repositories/{}/resources/{}".format(repo_id, resource_id)).json()
         no_slashes = ""
         combined_aspace_id = ""
@@ -32,18 +34,17 @@ def update_ids(client):
                     no_slashes = value.replace("-", "")
                     combined_aspace_id += no_slashes + "-"
                     resource_data[field] = no_slashes
-                    print(combined_aspace_id[:-1])
-                    print(f'Old ID: {value}   >>>   New ID: {no_slashes}\n')
+                    output_message += combined_aspace_id[:-1] + "|" + value + "|" + no_slashes + "|"
                     total_changes += 1
                 else:
                     combined_aspace_id += value + "-"
+        if no_slashes:
+            update_resource = client.post("repositories/{}/resources/{}".format(repo_id, resource_id),
+                                          json = resource_data).json()
+            output_message += str(update_resource)
+        if output_message:
+            print(output_message)
     print(f'Total Updates: {total_changes}')
-        # if no_slashes:
-        #     print(combined_aspace_id[:-1])
-        #     update_resource = client.post("repositories/{}/resources/{}".format(repo_id, resource_id),
-        #                                   json = resource_data).json()
-        #     print(update_resource)
-        #     print("-" * 100)
 
 
 asp_client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
