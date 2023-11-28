@@ -23,6 +23,10 @@ Toolkit
 Checks all archival objects in ArchivesSpace and checks to see what objects are listed as collections, as well as
 updating ms3789 to change its objects from 'collection' to 'file'
 
+### check_barcodes.py
+Checks ArchivesSpace against exported barcodes from our container management system to determine which barcodes do
+not exist in ArchivesSpace. Returns a csv of barcodes not found in ArchivesSpace
+
 ### check_child_counts.py
 
 Checks how many children a parent object has in ArchivesSpace and if the number of children is equal to or greater than
@@ -217,6 +221,12 @@ packages
    4. The email server from which you send your email report
    5. Your ArchivesSpace's staging database credentials, including username, password, hostname, database name, and port
 4. Run the script as `python3 ASpace_Data_Audit.py`
+
+### Script Arguments
+Each script has its own parameters, most not requiring any arguments to run. However, you will want to take time to 
+adjust the script to meet your own needs. For instance, you may want to set up a 'data' and/or 'reports' folder in your 
+code's directory to store exported CSV's, Excel spreadsheets, or any other outputs that are generated from the script. 
+See the [Workflow](#Workflow) section for more info on what each script does.
 
 ## Workflow
 1. Select which script you would like to run
