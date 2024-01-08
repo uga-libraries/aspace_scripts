@@ -8,7 +8,7 @@ from asnake.client import ASnakeClient
 client = ASnakeClient(baseurl=as_api, username=as_un, password=as_pw)
 client.authorize()
 
-barcode_wb = load_workbook("data/HCBC.xlsx")
+barcode_wb = load_workbook("data/RLBC.xlsx")
 barcode_sheet = barcode_wb["Item"]
 count = 0
 missing_barcodes = []
@@ -24,7 +24,7 @@ for row in barcode_sheet.iter_rows(values_only=True):
             if row[0] != result["barcode"]:
                 print(f'Search result does not match barcode {row[0]}: {result}')
 
-with open('data/missing_barcodes-HCBC-tc.csv', mode='w', encoding='utf8', newline="") as missing_file:
+with open('data/missing_barcodes-RLBC-tc.csv', mode='w', encoding='utf8', newline="") as missing_file:
     missing_file = csv.writer(missing_file, delimiter=',')
     for barcode in missing_barcodes:
         missing_file.writerow([barcode])
