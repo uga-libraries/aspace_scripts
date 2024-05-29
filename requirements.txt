@@ -1,5 +1,5 @@
 ArchivesSnake~=0.10.1
-lxml~=5.2.1
+lxml~=5.2.2
 mysql~=0.0.3
 mysqlclient==2.2.4
 mysql-connector-python==8.3.0
