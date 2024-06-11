@@ -1,8 +1,8 @@
-# Updates all HCTC container indicators to match the ####.###.### format
+# Updates all HCTC container indicators to match the ####.###.###abcdetc. format for those beginning with four numbers,
+# aka year
 
 import re
 from secrets import *
-from asnake.aspace import ASpace
 from asnake.client import ASnakeClient
 
 match_year = re.compile(r"^[0-9]{4}", re.UNICODE)
@@ -62,7 +62,7 @@ def parse_ind_sections(subsection):
         try:
             int(character)
             number_list.append(character)
-        except ValueError as not_int:
+        except ValueError:
             letter_list.append(character)
     for number in number_list:
         new_sub_ind += number
