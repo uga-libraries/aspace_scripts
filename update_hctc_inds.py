@@ -10,6 +10,7 @@ match_year = re.compile(r"^[0-9]{4}", re.UNICODE)
 client = ASnakeClient(baseurl=as_api_stag, username=as_un, password=as_pw)
 client.authorize()
 
+
 def generate_new_ind(old_ind):
     """
     Take the indicator string and split into sections on the ., evaulate between numbers and letters, then recombine
@@ -93,8 +94,8 @@ def run_update(update=True):
                             print(new_childc_ind, "Child_Container")
                             instance['sub_container']['indicator_2'] = new_childc_ind
                             if update is True:
-                                # print(ao_data)
-                                client.post(f'/repositories/8/archival_objects/{str(ao_id)}', json=ao_data)
+                                update_ind = client.post(f'/repositories/8/archival_objects/{str(ao_id)}', json=ao_data)
+                                print(update_ind.text)
                     tc_data = client.get(instance['sub_container']['top_container']['ref']).json()
                     if 'indicator' in tc_data:
                         new_topc_ind = generate_new_ind(tc_data['indicator'])
@@ -102,8 +103,9 @@ def run_update(update=True):
                             print(new_topc_ind, "Top_Container")
                             tc_data['indicator'] = new_topc_ind
                             if update is True:
-                                # print(tc_data)
-                                client.post(instance['sub_container']['top_container']['ref'], json=tc_data)
+                                update_ind = client.post(instance['sub_container']['top_container']['ref'],
+                                                         json=tc_data)
+                                print(update_ind.text)
 
 
 if __name__ == "__main__":
