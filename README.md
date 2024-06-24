@@ -220,11 +220,17 @@ data audit report
 2. Run `pip install requirements.txt` or check the import statements for the script you want to run and install those 
 packages
 3. Create a secrets.py file with the following information:
-   1. An ArchivesSpace admin username, password
-   2. The URLs to your ArchivesSpace staging and production API instances
-   3. Variables with their values set to user emails you want to send the report to
-   4. The email server from which you send your email report
-   5. Your ArchivesSpace's staging database credentials, including username, password, hostname, database name, and port
+   1. An ArchivesSpace admin username (as_un = ""), password (as_pw = "")
+   2. The URLs to your ArchivesSpace staging (as_api_stag = "") and production (as_api = "") API instances
+   3. Variables with their values set to user emails you want to send the report to:
+      1. sendfrom_email = "<send_from_email>"
+      2. sendto_emails = ["<send_to_email>", "<send_to_email>", "<send_to_email>"]
+      3. senderror_emails = ["<send_to_email>", "<send_to_email>"]
+   4. The email server from which you send your email report (email_server = "")
+   5. Your ArchivesSpace's staging database credentials, including username (as_dbstag_un = ""), 
+   password (as_dbstag_pw = ""), hostname (as_dbstag_host = ""), database name (as_dbstag_database = ""), and 
+   port (as_dbstag_port = "")
+
 4. Run the script as `python3 ASpace_Data_Audit.py`
 
 ### Script Arguments
